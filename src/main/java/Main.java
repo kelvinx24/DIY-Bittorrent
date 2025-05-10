@@ -19,7 +19,15 @@ public class Main {
          System.out.println(e.getMessage());
          return;
       }
-      System.out.println(gson.toJson(decoded));
+
+      if (bencodedValue.charAt(0) == 'i') {
+        long decodedLong = Long.parseLong(decoded);
+        System.out.println(gson.toJson(decodedLong));
+      }
+      else {
+        System.out.println(gson.toJson(decoded));
+      }
+
 
     } else {
       System.out.println("Unknown command: " + command);
