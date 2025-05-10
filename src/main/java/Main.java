@@ -38,7 +38,17 @@ public class Main {
       }
       int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
       return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
-    } else {
+    }
+    else if (bencodedString.charAt(0) == 'i') {
+      int endindex = bencodedString.indexOf('e');
+      if (endindex != bencodedString.length() - 1) {
+        throw new RuntimeException("Invalid bencoded string");
+      }
+      else {
+        return bencodedString.substring(1, endindex);
+      }
+    }
+    else {
       throw new RuntimeException("Only strings are supported at the moment");
     }
   }
