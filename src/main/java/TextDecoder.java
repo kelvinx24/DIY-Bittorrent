@@ -13,7 +13,7 @@ public class TextDecoder implements Decoder<String> {
 					break;
 				}
 			}
-			int textLength = Integer.parseInt(bencodedString.substring(0, colonIndex));
+			textLength = Integer.parseInt(bencodedString.substring(0, colonIndex));
 
 			assert bencodedString.length() == colonIndex + 1 + textLength;
 			return bencodedString.substring(colonIndex + 1, colonIndex + 1 + textLength);
