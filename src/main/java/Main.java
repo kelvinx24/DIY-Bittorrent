@@ -12,7 +12,7 @@ public class Main {
     if("decode".equals(command)) {
       //  Uncomment this block to pass the first stage
       String bencodedValue = args[1];
-      String decoded;
+      Object decoded;
       try {
        decoded = decodeBencode(bencodedValue);
       } catch(RuntimeException e) {
@@ -20,6 +20,7 @@ public class Main {
          return;
       }
 
+      /*
       if (bencodedValue.charAt(0) == 'i') {
         long decodedLong = Long.parseLong(decoded);
         System.out.println(gson.toJson(decodedLong));
@@ -28,6 +29,9 @@ public class Main {
         System.out.println(gson.toJson(decoded));
       }
 
+       */
+      System.out.println(gson.toJson(decoded));
+
 
     } else {
       System.out.println("Unknown command: " + command);
@@ -35,30 +39,26 @@ public class Main {
 
   }
 
-  static String decodeBencode(String bencodedString) {
+  static Object decodeBencode(String bencodedString) {
+    Decoder<?> decoder = null;
     if (Character.isDigit(bencodedString.charAt(0))) {
-      int firstColonIndex = 0;
-      for(int i = 0; i < bencodedString.length(); i++) { 
-        if(bencodedString.charAt(i) == ':') {
-          firstColonIndex = i;
-          break;
-        }
-      }
-      int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
-      return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
+      decoder = new TextDecoder();
     }
-    else if (bencodedString.charAt(0) == 'i') {
-      int endindex = bencodedString.indexOf('e');
-      if (endindex != bencodedString.length() - 1) {
-        throw new RuntimeException("Invalid bencoded string");
-      }
-      else {
-        return bencodedString.substring(1, endindex);
-      }
+    else if (bencodedString.charAt(0) == 'i' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
+      decoder = new NumberDecoder();
+    }
+    else if (bencodedString.charAt(0) == 'l' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
+      decoder = new ListDecoder();
+    }
+    else if (bencodedString.charAt(0) == 'd' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
+      //decoder = new DictionaryDecoder();
     }
     else {
       throw new RuntimeException("Only strings are supported at the moment");
     }
+
+    assert decoder != null;
+    return decoder.decode(bencodedString);
   }
   
 }
