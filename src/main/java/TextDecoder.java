@@ -1,54 +1,23 @@
 public class TextDecoder implements Decoder<String> {
-
-	private int colonIndex = 0;
-	private int textLength = 0;
-
+	/**
+	 * Decodes a bencoded string. Looks for ':' to find the end of the length.
+	 * The string part is then extracted based on the length.
+	 * The format is: <length>:<string>
+	 * For example, "4:spam" means the string "spam" with length 4.
+	 *
+	 * @param input      The bencoded string to decode.
+	 * @param startIndex The index to start decoding from.
+	 * @return A DecoderDTO containing the decoded string and the next index.
+	 */
 	@Override
-	public String decode(String bencodedString) throws RuntimeException {
-		if (Character.isDigit(bencodedString.charAt(0))) {
-			colonIndex = 0;
-			for (int i = 0; i < bencodedString.length(); i++) {
-				if (bencodedString.charAt(i) == ':') {
-					colonIndex = i;
-					break;
-				}
-			}
-			textLength = Integer.parseInt(bencodedString.substring(0, colonIndex));
-
-			assert bencodedString.length() == colonIndex + 1 + textLength;
-			return bencodedString.substring(colonIndex + 1, colonIndex + 1 + textLength);
-		}
-		else {
-			throw new RuntimeException("Only strings are supported at the moment");
-		}
+	public DecoderDTO decode(String input, int startIndex) {
+		int colonIndex = input.indexOf(':', startIndex);
+		int length = Integer.parseInt(input.substring(startIndex, colonIndex));
+		int strStart = colonIndex + 1;
+		int strEnd = strStart + length;
+		String value = input.substring(strStart, strEnd);
+		return new DecoderDTO(value, strEnd);
 	}
 
-	@Override
-	public boolean isValid(String bencodedString) {
-		if (bencodedString == null || bencodedString.isEmpty()) {
-			return false;
-		}
-		if (Character.isDigit(bencodedString.charAt(0))) {
-			int firstColonIndex = 0;
-			for (int i = 0; i < bencodedString.length(); i++) {
-				if (bencodedString.charAt(i) == ':') {
-					firstColonIndex = i;
-					break;
-				}
-			}
-			int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
-			return bencodedString.length() == firstColonIndex + 1 + length;
-		}
-		else {
-			return false;
-		}
-	}
 
-	public int getTextLength() {
-		return textLength;
-	}
-
-	public int getColonIndex() {
-		return colonIndex;
-	}
 }

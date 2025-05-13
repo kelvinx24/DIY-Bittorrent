@@ -40,25 +40,11 @@ public class Main {
   }
 
   static Object decodeBencode(String bencodedString) {
-    Decoder<?> decoder = null;
-    if (Character.isDigit(bencodedString.charAt(0))) {
-      decoder = new TextDecoder();
-    }
-    else if (bencodedString.charAt(0) == 'i' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-      decoder = new NumberDecoder();
-    }
-    else if (bencodedString.charAt(0) == 'l' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-      decoder = new ListDecoder();
-    }
-    else if (bencodedString.charAt(0) == 'd' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-      //decoder = new DictionaryDecoder();
-    }
-    else {
-      throw new RuntimeException("Only strings are supported at the moment");
-    }
 
-    assert decoder != null;
-    return decoder.decode(bencodedString);
+    DecoderDispatcher dispatcher = new DecoderDispatcher();
+    DecoderDTO dto = dispatcher.decode(bencodedString, 0);
+
+    return dto.getValue();
   }
   
 }

@@ -1,33 +1,20 @@
 public class NumberDecoder implements Decoder<Long>{
 	private int endindex = 0;
 
+	/**
+	 * Decodes a bencoded number. Looks for 'e' to find the end of the number.
+	 * The number is expected to be in the format "i<number>e".
+	 * For example, "i42e" means the number 42.
+	 * @param input The bencoded string to decode.
+	 * @param startIndex The index to start decoding from.
+	 * @return
+	 */
 	@Override
-	public Long decode(String bencodedString) throws RuntimeException {
-		if (bencodedString.charAt(0) == 'i') {
-			endindex = bencodedString.indexOf('e');
-			if (endindex != bencodedString.length() - 1) {
-				throw new RuntimeException("Invalid bencoded string");
-			}
-			else {
-				return Long.parseLong(bencodedString.substring(1, endindex));
-			}
-		}
-		else {
-			throw new RuntimeException("Only integers are supported at the moment");
-		}
+	public DecoderDTO decode(String input, int startIndex) {
+		int endIndex = input.indexOf('e', startIndex);
+		String numberStr = input.substring(startIndex + 1, endIndex);
+		int value = Integer.parseInt(numberStr);
+		return new DecoderDTO(value, endIndex + 1);
 	}
 
-	@Override
-	public boolean isValid(String bencodedString) {
-		if (bencodedString == null || bencodedString.isEmpty()) {
-			return false;
-		}
-		if (bencodedString.charAt(0) == 'i') {
-			int endindex = bencodedString.indexOf('e');
-			return endindex != -1 && endindex == bencodedString.length() - 1;
-		}
-		else {
-			return false;
-		}
-	}
 }

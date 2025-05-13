@@ -5,46 +5,32 @@ public class ListDecoder implements Decoder<List<Object>>{
 
 	private int trackingIndex = 0;
 
-	@Override
-	public List<Object> decode(String bencodedString) throws RuntimeException {
-		if (bencodedString.charAt(0) == 'l' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-			trackingIndex = 1; // Skip the initial 'l'
-			return parseList(bencodedString);
-		} else {
-			throw new RuntimeException("Invalid bencoded string");
-		}
+	private final DecoderDispatcher dispatcher;
+
+	public ListDecoder(DecoderDispatcher dispatcher) {
+		this.dispatcher = dispatcher;
 	}
 
-	private List<Object> parseList(String bencodedString) {
+	/**
+	 * Decodes a bencoded list from the input string starting at the given index.
+	 * Repeatedly calls the dispatcher to decode each element until it finds 'e'.
+	 * The list is expected to be in the format "l<element1><element2>...e".
+	 * For example, "l4:spam4:eggs" means a list with two strings: "spam" and "eggs".
+	 * @param input The bencoded string to decode.
+	 * @param startIndex The index to start decoding from.
+	 * @return
+	 */
+	public DecoderDTO decode(String input, int startIndex) {
 		List<Object> list = new ArrayList<>();
+		int index = startIndex + 1; // Skip 'l'
 
-		while (bencodedString.charAt(trackingIndex) != 'e') {
-			char currentChar = bencodedString.charAt(trackingIndex);
-			if (currentChar == 'i') {
-				int endIndex = bencodedString.indexOf('e', trackingIndex);
-				//list.add(Long.parseLong(bencodedString.substring(i + 1, endIndex)));
-				NumberDecoder numDecoder = new NumberDecoder();
-
-				Object value = numDecoder.decode(bencodedString.substring(trackingIndex, endIndex + 1));
-				list.add(value);
-
-				trackingIndex = endIndex + 1;
-			} else if (Character.isDigit(currentChar)) {
-				int firstColonIndex = bencodedString.indexOf(':', trackingIndex);
-				int length = Integer.parseInt(bencodedString.substring(trackingIndex, firstColonIndex));
-				list.add(bencodedString.substring(firstColonIndex + 1, firstColonIndex + 1 + length));
-				trackingIndex = firstColonIndex + 1 + length;
-			} else if (currentChar == 'l') {
-				list.add(parseList(bencodedString));
-			} else {
-				throw new RuntimeException("Invalid bencoded string");
-			}
+		while (input.charAt(index) != 'e') {
+			DecoderDTO element = dispatcher.decode(input, index);
+			list.add(element.getValue());
+			// index is updated in the decode method based on decoded type
+			index = element.getNextIndex();
 		}
-		return list;
-	}
 
-	@Override
-	public boolean isValid(String bencodedString) {
-		return bencodedString != null && !bencodedString.isEmpty() && bencodedString.charAt(0) == 'l';
+		return new DecoderDTO(list, index + 1); // Skip 'e'
 	}
 }

@@ -1,5 +1,3 @@
 public interface Decoder<T> {
-	T decode(String bencodedString) throws RuntimeException;
-
-	boolean isValid(String bencodedString);
+	DecoderDTO decode(String bencodedString, int startIndex) throws RuntimeException;
 }
