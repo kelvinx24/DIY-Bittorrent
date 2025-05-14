@@ -1,13 +1,13 @@
-public class DecoderDTO {
-	private final Object value;      // Can be Integer, String, List, Map
+public class DecoderDTO<T> {
+	private final T value;      // Can be Integer, String, List, Map
 	private final int nextIndex;     // Index after the decoded value
 
-	public DecoderDTO(Object value, int nextIndex) {
+	public DecoderDTO(T value, int nextIndex) {
 		this.value = value;
 		this.nextIndex = nextIndex;
 	}
 
-	public Object getValue() {
+	public T getValue() {
 		return value;
 	}
 

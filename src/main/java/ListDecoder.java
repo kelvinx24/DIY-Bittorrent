@@ -1,10 +1,8 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ListDecoder implements Decoder<List<Object>>{
-
-	private int trackingIndex = 0;
-
 	private final DecoderDispatcher dispatcher;
 
 	public ListDecoder(DecoderDispatcher dispatcher) {
@@ -20,17 +18,35 @@ public class ListDecoder implements Decoder<List<Object>>{
 	 * @param startIndex The index to start decoding from.
 	 * @return
 	 */
-	public DecoderDTO decode(String input, int startIndex) {
+	public DecoderDTO<List<Object>> decode(String input, int startIndex) {
 		List<Object> list = new ArrayList<>();
 		int index = startIndex + 1; // Skip 'l'
 
 		while (input.charAt(index) != 'e') {
-			DecoderDTO element = dispatcher.decode(input, index);
+			DecoderDTO<?> element = dispatcher.decode(input, index);
 			list.add(element.getValue());
 			// index is updated in the decode method based on decoded type
 			index = element.getNextIndex();
 		}
 
-		return new DecoderDTO(list, index + 1); // Skip 'e'
+		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
+	}
+
+	@Override
+	public DecoderDTO<List<Object>> decode(byte[] bencodedBytes,
+			int startIndex, TorrentInfoDTO infoDTO) throws RuntimeException {
+		if (bencodedBytes[startIndex] != 'l') {
+			throw new RuntimeException("Invalid bencoded list format");
+		}
+
+		List<Object> list = new ArrayList<>();
+		int index = startIndex + 1; // Skip 'l'
+		while (bencodedBytes[index] != 'e') {
+			DecoderDTO<?> element = dispatcher.decode(bencodedBytes, index, infoDTO);
+			list.add(element.getValue());
+			// index is updated in the decode method based on decoded type
+			index = element.getNextIndex();
+		}
+		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
 	}
 }

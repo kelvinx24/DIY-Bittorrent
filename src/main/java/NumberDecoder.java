@@ -1,6 +1,6 @@
-public class NumberDecoder implements Decoder<Long>{
-	private int endindex = 0;
+import java.util.Optional;
 
+public class NumberDecoder implements Decoder<Integer>{
 	/**
 	 * Decodes a bencoded number. Looks for 'e' to find the end of the number.
 	 * The number is expected to be in the format "i<number>e".
@@ -10,11 +10,29 @@ public class NumberDecoder implements Decoder<Long>{
 	 * @return
 	 */
 	@Override
-	public DecoderDTO decode(String input, int startIndex) {
+	public DecoderDTO<Integer> decode(String input, int startIndex) {
 		int endIndex = input.indexOf('e', startIndex);
 		String numberStr = input.substring(startIndex + 1, endIndex);
-		int value = Integer.parseInt(numberStr);
-		return new DecoderDTO(value, endIndex + 1);
+		Integer value = Integer.parseInt(numberStr);
+		return new DecoderDTO<Integer>(value, endIndex + 1);
+	}
+
+	@Override
+	public DecoderDTO<Integer> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO) throws RuntimeException {
+		if (bencodedBytes[startIndex] != 'i') {
+			throw new IllegalArgumentException("Invalid bencoded number format");
+		}
+
+		int endIndex = startIndex + 1;
+
+		while (bencodedBytes[endIndex] != 'e') {
+			endIndex++;
+		}
+
+		String numberStr = new String(bencodedBytes, startIndex + 1, endIndex - startIndex - 1);
+		Integer value = Integer.parseInt(numberStr);
+		return new DecoderDTO<Integer>(value, endIndex + 1);
+
 	}
 
 }
