@@ -1,10 +1,16 @@
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -114,5 +120,61 @@ public class PeerRequester {
 		}
 
 
+	}
+
+	public byte[] peerHandshake(String ipAddr, int port) throws IOException{
+		Socket socket = new Socket();
+		socket.connect(new InetSocketAddress(ipAddr, port), 5000);
+
+		// Will automatically close the streams when done
+		try (OutputStream outputStream = socket.getOutputStream();
+			 InputStream inputStream = socket.getInputStream();
+		) {
+			byte[] handshake = buildHandshake();
+			outputStream.write(handshake);
+			outputStream.flush();
+
+			byte[] response = new byte[68];
+			int bytesRead = inputStream.read(response);
+			if (bytesRead == -1) {
+				throw new IOException("No response from peer");
+			}
+
+
+			// Check if the response is valid
+			String protocol = new String(response, 1, 19);
+			if (!"BitTorrent protocol".equals(protocol)) {
+				throw new IOException("Invalid response from peer");
+			}
+			byte[] infoHash = Arrays.copyOfRange(response, 28, 48);
+			byte[] peerId = Arrays.copyOfRange(response, 48, 68);
+			if (!Arrays.equals(this.infoHash, infoHash)) {
+				throw new IOException("Info hash mismatch");
+			}
+
+			// Return the peer ID
+			return peerId;
+		}
+	}
+
+	private byte[] buildHandshake() {
+		int protocolLength = 19;
+		String protocol = "BitTorrent protocol";
+		byte[] reserved = new byte[8];
+
+		// Used to create a byte array (like StringBuilder is for string)
+		ByteArrayOutputStream byteArrayStream = new ByteArrayOutputStream();
+
+		try {
+			byteArrayStream.write(protocolLength);
+			byteArrayStream.write(protocol.getBytes());
+			byteArrayStream.write(reserved);
+			byteArrayStream.write(infoHash);
+			byteArrayStream.write(peerId.getBytes());
+
+			return byteArrayStream.toByteArray();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

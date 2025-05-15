@@ -68,6 +68,18 @@ public class Main {
           System.out.println(entry.getKey() + ":" + entry.getValue());
         }
     }
+    else if (command.equals("handshake")) {
+        String filepath = args[1];
+        String peer = args[2];
+        String[] peerParts = peer.split(":");
+        String ipAddr = peerParts[0];
+        int port = Integer.parseInt(peerParts[1]);
+
+        TorrentFileHandler tfh = new TorrentFileHandler(filepath);
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
+        System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
+    }
     else {
       System.out.println("Unknown command: " + command);
     }
