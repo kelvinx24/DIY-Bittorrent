@@ -1,7 +1,9 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -12,10 +14,16 @@ public class TorrentFileHandler {
 
 	private byte[] fileContent;
 	private Map<String, Object> fileContentMap;
+	private Map<String, Object> infoMap;
 	private byte[] fileHash;
+
+	private int fileHashLength = 20; // SHA-1 hash length in bytes
+	private int pieceLength;
+	private List<byte[]> hashedPieces;
 
 	public TorrentFileHandler(String fileName) {
 		this.fileName = fileName;
+		this.hashedPieces = new ArrayList<>();
 		readFile();
 	}
 
@@ -43,6 +51,18 @@ public class TorrentFileHandler {
 		return fileHash;
 	}
 
+	public int getPieceLength() {
+		return pieceLength;
+	}
+
+	public List<byte[]> getHashedPieces() {
+		return hashedPieces;
+	}
+
+	public Map<String, Object> getInfoMap() {
+		return infoMap;
+	}
+
 	private void readFile() throws RuntimeException {
 		try {
 			fileContent = Files.readAllBytes(Paths.get(fileName));
@@ -50,15 +70,24 @@ public class TorrentFileHandler {
 			DecoderDispatcher decoderDispatcher = new DecoderDispatcher();
 			TorrentInfoDTO torrentInfoDTO = new TorrentInfoDTO();
 			DecoderDTO<?> decoded = decoderDispatcher.decode(fileContent, 0, torrentInfoDTO);
+
 			fileContentMap = (Map<String, Object>) decoded.getValue();
-			Map<String, Object> infoMap = (Map<String, Object>) fileContentMap.get("info");
+			infoMap = (Map<String, Object>) fileContentMap.get("info");
 			fileLength = (int) infoMap.get("length"); 
 			trackerUrl = (String) fileContentMap.get("announce");
+			pieceLength = (int) infoMap.get("piece length");
 
 			// Calculate the SHA-1 hash of the info dictionary
-			byte[] infoBytes = Arrays.copyOfRange(fileContent, torrentInfoDTO.getStartIndex(), torrentInfoDTO.getEndIndex());
+			NumberPair infoByteRange = torrentInfoDTO.getInfoByteRange();
+			byte[] infoBytes = Arrays.copyOfRange(fileContent, infoByteRange.first(), infoByteRange.second());
 			fileHash = sha1Hash(infoBytes);
 
+			// Calculate the SHA-1 hash of each piece
+			NumberPair pieceByteRange = torrentInfoDTO.getByteRange("pieces");
+			for (int i = pieceByteRange.first(); i < pieceByteRange.second(); i += fileHashLength) {
+				byte[] piece = Arrays.copyOfRange(fileContent, i, i + fileHashLength);
+				hashedPieces.add(piece);
+			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

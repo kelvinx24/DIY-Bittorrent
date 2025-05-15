@@ -3,31 +3,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class TorrentInfoDTO {
-	private int startIndex;
-	private int endIndex;
-
 	private final Map<String, NumberPair> byteRangeMap;
 
 	public TorrentInfoDTO() {
-		this.startIndex = -1;
-		this.endIndex = -1;
 		this.byteRangeMap = new LinkedHashMap<>();
 	}
 
-	public int getStartIndex() {
-		return startIndex;
+	public Map<String, NumberPair> getByteRangeMap() {
+		return byteRangeMap;
 	}
 
-	public int getEndIndex() {
-		return endIndex;
+	public NumberPair getByteRange(String key) {
+		return this.byteRangeMap.get(key);
 	}
 
-	public int setEndIndex(int endIndex) {
-		return this.endIndex = endIndex;
-	}
-
-	public int setStartIndex(int startIndex) {
-		return this.startIndex = startIndex;
+	public NumberPair getInfoByteRange() {
+		return this.byteRangeMap.get("info");
 	}
 
 	public void addByteRange(String key, int start, int end) {

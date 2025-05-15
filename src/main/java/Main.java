@@ -47,7 +47,26 @@ public class Main {
         System.out.println("File Length: " + tfh.getFileLength());
         System.out.println("Tracker URL: " + tfh.getTrackerUrl());
         System.out.println("Hash: " + TorrentFileHandler.bytesToHex(tfh.getFileHash()));
+        System.out.println("Content: " + gson.toJson(tfh.getFileContentMap()));
+        System.out.println("Piece Length: " + tfh.getPieceLength());
+        System.out.println("Hashed Pieces: ");
+        for (byte[] piece : tfh.getHashedPieces()) {
+          System.out.println(TorrentFileHandler.bytesToHex(piece));
+        }
+        System.out.println("Info: " + gson.toJson(tfh.getInfoMap()));
 
+    }
+
+    else if (command.equals("peers")) {
+        String filepath = args[1];
+        TorrentFileHandler tfh = new TorrentFileHandler(filepath);
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        TrackerResponse tr = peerRequester.requestTracker();
+        System.out.println("Interval: " + tr.getInterval());
+        System.out.println("Peers: ");
+        for (Map.Entry<String, Integer> entry : tr.getPeersMap().entrySet()) {
+          System.out.println(entry.getKey() + ":" + entry.getValue());
+        }
     }
     else {
       System.out.println("Unknown command: " + command);

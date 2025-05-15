@@ -47,7 +47,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 		Map<String, Object> dict = new LinkedHashMap<>();
 		int index = startIndex + 1; // Skip 'd'
 		int infoIndexStart = index; // Store the start index for info
-		int infoIndexEnd = -1; // Initialize the end index for info
+		int infoIndexEnd = index; // Initialize the end index for info
 
 
 		while (bencodedBytes[index] != 'e') {
@@ -63,10 +63,12 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 			// Move the index to the end of the value
 			index = valueResult.getNextIndex();
 
-			if (key.equals("info") && infoDTO != null) {
+			if (infoDTO != null) {
+				if (!key.equals("info")) {
+					infoIndexStart = infoIndexStart + 3;
+				}
 				infoIndexEnd = index;
-				infoDTO.setStartIndex(infoIndexStart);
-				infoDTO.setEndIndex(infoIndexEnd);
+				infoDTO.addByteRange(key, infoIndexStart, infoIndexEnd);
 			}
 
 		}
