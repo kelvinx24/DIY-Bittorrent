@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -8,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +40,12 @@ public class PeerRequester {
 	private int downloaded;
 	private int left;
 	private final int compactMode;
+
+	private Socket peerSocket;
+	private OutputStream outputStream;
+	private InputStream inputStream;
+
+	private record PeerMessage(int id, byte[] payload) {}
 
 	public PeerRequester(String peerIp, int port, int fileSize, byte[] infoHash) {
 		this.peerIp = peerIp;
@@ -123,13 +131,12 @@ public class PeerRequester {
 	}
 
 	public byte[] peerHandshake(String ipAddr, int port) throws IOException{
-		Socket socket = new Socket();
-		socket.connect(new InetSocketAddress(ipAddr, port), 5000);
+		peerSocket = new Socket();
+		peerSocket.connect(new InetSocketAddress(ipAddr, port), 5000);
 
 		// Will automatically close the streams when done
-		try (OutputStream outputStream = socket.getOutputStream();
-			 InputStream inputStream = socket.getInputStream();
-		) {
+			this.outputStream = peerSocket.getOutputStream();
+			this.inputStream = peerSocket.getInputStream();
 			byte[] handshake = buildHandshake();
 			outputStream.write(handshake);
 			outputStream.flush();
@@ -152,8 +159,25 @@ public class PeerRequester {
 				throw new IOException("Info hash mismatch");
 			}
 
+
+
 			// Return the peer ID
 			return peerId;
+	}
+
+	public void closeConnection() {
+		try {
+			if (outputStream != null) {
+				outputStream.close();
+			}
+			if (inputStream != null) {
+				inputStream.close();
+			}
+			if (peerSocket != null) {
+				peerSocket.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -177,4 +201,100 @@ public class PeerRequester {
 			throw new RuntimeException(e);
 		}
 	}
+
+	public byte[] downloadPiece(int pieceIndex, int pieceLength, int fileLength) throws IOException {
+		int bitfieldID = 5;
+		int unchokeID = 1;
+		int blockSize = 16384;
+
+		while (true) {
+			PeerMessage message = readMessage(inputStream);
+
+			if (message != null && message.id == bitfieldID) {
+				break;
+			}
+		}
+
+		sendInterested(outputStream);
+
+		while (true) {
+			PeerMessage message = readMessage(inputStream);
+
+			if (message != null && message.id == unchokeID) {
+				break;
+			}
+		}
+
+		int remaining = fileLength - pieceIndex * pieceLength;
+		if (remaining < pieceLength) {
+			pieceLength = Math.abs(remaining);
+		}
+		// Send request for the piece
+		for (int offset = 0; offset < pieceLength; offset += blockSize) {
+			int blockLen = Math.min(blockSize, pieceLength - offset);
+			sendRequest(outputStream, pieceIndex, offset, blockLen);
+		}
+
+		byte[] pieceData = new byte[pieceLength];
+		int received = 0;
+		while (received * blockSize < pieceLength) {
+			PeerMessage msg = readMessage(inputStream);
+			if (msg == null || msg.id != 7) continue;
+
+			ByteBuffer payload = ByteBuffer.wrap(msg.payload);
+			int begin = payload.getInt();
+			byte[] block = new byte[msg.payload.length - 8];
+			payload.get(block);
+
+			System.arraycopy(block, 0, pieceData, begin, block.length);
+			received++;
+		}
+
+		return  pieceData;
+	}
+
+	public void writeToFile(byte[] data, String filePath) throws IOException {
+		try (FileOutputStream fos = new FileOutputStream(filePath)) {
+			fos.write(data);
+		}
+	}
+
+
+
+	private void sendInterested(OutputStream out) throws IOException {
+		ByteArrayOutputStream msg = new ByteArrayOutputStream();
+		msg.write(intToBytes(1)); // length
+		msg.write(2);             // ID = interested
+		out.write(msg.toByteArray());
+		out.flush();
+	}
+
+	private void sendRequest(OutputStream out, int index, int begin, int length) throws IOException {
+		ByteArrayOutputStream msg = new ByteArrayOutputStream();
+		msg.write(intToBytes(13)); // 1 (ID) + 12 (payload)
+		msg.write(6);              // ID = request
+		msg.write(intToBytes(index));
+		msg.write(intToBytes(begin));
+		msg.write(intToBytes(length));
+		out.write(msg.toByteArray());
+		out.flush();
+	}
+
+	private static PeerMessage readMessage(InputStream in) throws IOException {
+		byte[] lenBytes = in.readNBytes(4);
+		if (lenBytes.length != 4) return null;
+
+		int length = ByteBuffer.wrap(lenBytes).getInt();
+		if (length == 0) return null; // keep-alive
+
+		int id = in.read();
+		byte[] payload = in.readNBytes(length - 1);
+		return new PeerMessage(id, payload);
+	}
+
+	private static byte[] intToBytes(int val) {
+		return ByteBuffer.allocate(4).putInt(val).array();
+	}
+
+
 }

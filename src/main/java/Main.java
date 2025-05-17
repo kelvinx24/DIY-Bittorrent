@@ -80,6 +80,25 @@ public class Main {
         byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
         System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
     }
+    else if (command.equals("download_piece")) {
+        String filepath = args[1];
+
+        TorrentFileHandler tfh = new TorrentFileHandler(filepath);
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        TrackerResponse tr = peerRequester.requestTracker();
+        Map.Entry<String, Integer> entr = tr.getPeersMap().entrySet().iterator().next();
+
+        String ipAddr = entr.getKey();
+        int port = entr.getValue();
+
+        byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
+        System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
+        byte[] piece = peerRequester.downloadPiece(2, tfh.getPieceLength(), tfh.getFileLength());
+
+        peerRequester.writeToFile(piece, "piece_2.dat");
+        System.out.println("Piece downloaded and saved as piece_2.dat");
+        peerRequester.closeConnection();
+    }
     else {
       System.out.println("Unknown command: " + command);
     }
