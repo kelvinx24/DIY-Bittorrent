@@ -44,6 +44,7 @@ public class PeerRequester {
 	private Socket peerSocket;
 	private OutputStream outputStream;
 	private InputStream inputStream;
+	private boolean firstTimeHandshake;
 
 	private record PeerMessage(int id, byte[] payload) {}
 
@@ -60,6 +61,8 @@ public class PeerRequester {
 		this.client = HttpClient.newBuilder()
 				.version(HttpClient.Version.HTTP_1_1)
 				.build();
+
+		this.firstTimeHandshake = true;
 	}
 
 	private String randomPeerId() {
@@ -202,10 +205,9 @@ public class PeerRequester {
 		}
 	}
 
-	public byte[] downloadPiece(int pieceIndex, int pieceLength, int fileLength) throws IOException {
+	private void establishConnection() throws IOException{
 		int bitfieldID = 5;
 		int unchokeID = 1;
-		int blockSize = 16384;
 
 		while (true) {
 			PeerMessage message = readMessage(inputStream);
@@ -225,6 +227,16 @@ public class PeerRequester {
 			}
 		}
 
+		firstTimeHandshake = false;
+	}
+
+	public byte[] downloadPiece(int pieceIndex, int pieceLength, byte[] pieceHash, int fileLength) throws IOException {
+		int blockSize = 16384;
+
+		if (firstTimeHandshake) {
+			establishConnection();
+		}
+
 		int remaining = fileLength - pieceIndex * pieceLength;
 		if (remaining < pieceLength) {
 			pieceLength = Math.abs(remaining);
@@ -236,18 +248,27 @@ public class PeerRequester {
 		}
 
 		byte[] pieceData = new byte[pieceLength];
-		int received = 0;
-		while (received * blockSize < pieceLength) {
+		int totalReceived = 0;
+
+		while (totalReceived < pieceLength) {
 			PeerMessage msg = readMessage(inputStream);
 			if (msg == null || msg.id != 7) continue;
 
 			ByteBuffer payload = ByteBuffer.wrap(msg.payload);
+			int index = payload.getInt();       // you may want to verify it == pieceIndex
 			int begin = payload.getInt();
 			byte[] block = new byte[msg.payload.length - 8];
 			payload.get(block);
 
 			System.arraycopy(block, 0, pieceData, begin, block.length);
-			received++;
+			totalReceived += block.length;
+		}
+
+		// Verify the piece hash
+		byte[] dlHash = TorrentFileHandler.sha1Hash(pieceData);
+
+		if (!Arrays.equals(dlHash, pieceHash)) {
+			throw new IOException("Piece hash mismatch");
 		}
 
 		return  pieceData;

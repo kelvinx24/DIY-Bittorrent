@@ -93,10 +93,36 @@ public class Main {
 
         byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
         System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
-        byte[] piece = peerRequester.downloadPiece(2, tfh.getPieceLength(), tfh.getFileLength());
+        byte[] piece = peerRequester.downloadPiece(2, tfh.getPieceLength(), tfh.getHashedPieces().get(2), tfh.getFileLength());
 
-        peerRequester.writeToFile(piece, "piece_2.dat");
+        peerRequester.writeToFile(piece, "piece_1.dat");
         System.out.println("Piece downloaded and saved as piece_2.dat");
+        peerRequester.closeConnection();
+    }
+    else if (command.equals("download")) {
+        String filepath = args[1];
+
+        TorrentFileHandler tfh = new TorrentFileHandler(filepath);
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        TrackerResponse tr = peerRequester.requestTracker();
+        Map.Entry<String, Integer> entr = tr.getPeersMap().entrySet().iterator().next();
+
+        String ipAddr = entr.getKey();
+        int port = entr.getValue();
+
+        byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
+        System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
+        //byte[] piece = peerRequester.downloadPiece(2, tfh.getPieceLength(), tfh.getFileLength());
+
+        //peerRequester.writeToFile(piece, "piece_2.dat");
+        byte[] fullFile = new byte[tfh.getFileLength()];
+        for (int i = 0; i < tfh.getHashedPieces().size(); i++) {
+          byte[] piece = peerRequester.downloadPiece(i, tfh.getPieceLength(), tfh.getHashedPieces().get(i), tfh.getFileLength());
+          System.arraycopy(piece, 0, fullFile, i * tfh.getPieceLength(), piece.length);
+        }
+
+        peerRequester.writeToFile(fullFile, "downloaded_file.txt");
+        System.out.println("File downloaded and saved as downloaded_file.txt");
         peerRequester.closeConnection();
     }
     else {
