@@ -78,5 +78,11 @@ public class DecoderTests {
 			dispatcher.decode("x42e", 0); // invalid type prefix
 		});
 		assertTrue(ex.getMessage().contains("Unknown bencode type"));
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("i42", 0); // missing 'e' for integer
+		});
+
+		assertTrue(ex.getMessage().contains("Unknown bencode type"));
 	}
 }

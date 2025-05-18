@@ -17,6 +17,14 @@ public class DecoderDispatcher {
 	}
 
 	public DecoderDTO<?> decode(String input, int startIndex) {
+		if (input == null || input.isEmpty()) {
+			throw new IllegalArgumentException("Input string cannot be null or empty");
+		}
+
+		if (startIndex < 0 || startIndex >= input.length()) {
+			throw new IllegalArgumentException("Start index out of bounds: " + startIndex);
+		}
+
 		char prefix = input.charAt(startIndex);
 
 		if (prefix == 'i') return numberDecoder.decode(input, startIndex);
@@ -28,6 +36,14 @@ public class DecoderDispatcher {
 	}
 
 	public DecoderDTO<?> decode(byte[] input, int startIndex, TorrentInfoDTO infoDTO) {
+		if (input == null || input.length == 0) {
+			throw new IllegalArgumentException("Input byte array cannot be null or empty");
+		}
+
+		if (startIndex < 0 || startIndex >= input.length) {
+			throw new IllegalArgumentException("Start index out of bounds: " + startIndex);
+		}
+
 		byte prefix = input[startIndex];
 
 		if (prefix == 'i') return numberDecoder.decode(input, startIndex, infoDTO);

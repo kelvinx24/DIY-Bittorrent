@@ -18,7 +18,11 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 	 * The dictionary is expected to be in the format "d<key1><value1><key2><value2>...e".
 	 * For example, "d3:spami42e3:eggs4:spam" means a dictionary with two entries:
 	 */
-	public DecoderDTO<Map<String, Object>> decode(String input, int startIndex) {
+	public DecoderDTO<Map<String, Object>> decode(String input,
+			int startIndex) throws IllegalArgumentException {
+
+		validateInput(input, startIndex, 'd');
+
 		Map<String, Object> dict = new LinkedHashMap<>();
 		int index = startIndex + 1; // Skip 'd'
 
@@ -39,10 +43,9 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 
 	@Override
 	public DecoderDTO<Map<String, Object>> decode(byte[] bencodedBytes, int startIndex,
-			TorrentInfoDTO infoDTO) throws RuntimeException {
-		if (bencodedBytes[startIndex] != 'd') {
-			throw new RuntimeException("Invalid bencoded dictionary format");
-		}
+			TorrentInfoDTO infoDTO) throws IllegalArgumentException {
+		validateInput(bencodedBytes, startIndex, 'd');
+
 
 		Map<String, Object> dict = new LinkedHashMap<>();
 		int index = startIndex + 1; // Skip 'd'

@@ -10,7 +10,9 @@ public class NumberDecoder implements Decoder<Integer>{
 	 * @return
 	 */
 	@Override
-	public DecoderDTO<Integer> decode(String input, int startIndex) {
+	public DecoderDTO<Integer> decode(String input, int startIndex) throws IllegalArgumentException{
+		validateInput(input, startIndex, 'i');
+
 		int endIndex = input.indexOf('e', startIndex);
 		String numberStr = input.substring(startIndex + 1, endIndex);
 		Integer value = Integer.parseInt(numberStr);
@@ -18,10 +20,8 @@ public class NumberDecoder implements Decoder<Integer>{
 	}
 
 	@Override
-	public DecoderDTO<Integer> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO) throws RuntimeException {
-		if (bencodedBytes[startIndex] != 'i') {
-			throw new IllegalArgumentException("Invalid bencoded number format");
-		}
+	public DecoderDTO<Integer> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO) throws IllegalArgumentException {
+		validateInput(bencodedBytes, startIndex, 'i');
 
 		int endIndex = startIndex + 1;
 
