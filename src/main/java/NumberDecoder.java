@@ -14,9 +14,18 @@ public class NumberDecoder implements Decoder<Integer>{
 		validateInput(input, startIndex, 'i');
 
 		int endIndex = input.indexOf('e', startIndex);
+		if (endIndex == -1) {
+			throw new IllegalArgumentException("Invalid bencoded number: missing 'e' at index " + startIndex);
+		}
 		String numberStr = input.substring(startIndex + 1, endIndex);
-		Integer value = Integer.parseInt(numberStr);
-		return new DecoderDTO<Integer>(value, endIndex + 1);
+		int value;
+		try {
+			value = Integer.parseInt(numberStr);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Invalid number format at index " + startIndex, e);
+		}
+
+		return new DecoderDTO<Integer>(Integer.valueOf(value), endIndex + 1);
 	}
 
 	@Override
@@ -25,13 +34,26 @@ public class NumberDecoder implements Decoder<Integer>{
 
 		int endIndex = startIndex + 1;
 
-		while (bencodedBytes[endIndex] != 'e') {
+		while (endIndex < bencodedBytes.length && bencodedBytes[endIndex] != 'e') {
+			if (bencodedBytes[endIndex] < '0' || bencodedBytes[endIndex] > '9') {
+				throw new IllegalArgumentException("Invalid character in bencoded number at index " + endIndex);
+			}
 			endIndex++;
 		}
 
+		if (endIndex >= bencodedBytes.length || bencodedBytes[endIndex] != 'e') {
+			throw new IllegalArgumentException("Invalid bencoded number: missing 'e' at index " + startIndex);
+		}
+
 		String numberStr = new String(bencodedBytes, startIndex + 1, endIndex - startIndex - 1);
-		Integer value = Integer.parseInt(numberStr);
-		return new DecoderDTO<Integer>(value, endIndex + 1);
+		int value;
+		try {
+			value = Integer.parseInt(numberStr);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Invalid number format at index " + startIndex, e);
+		}
+
+		return new DecoderDTO<Integer>(Integer.valueOf(value), endIndex + 1);
 
 	}
 

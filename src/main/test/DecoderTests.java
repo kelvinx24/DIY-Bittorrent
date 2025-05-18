@@ -73,16 +73,56 @@ public class DecoderTests {
 	}
 
 	@Test
-	public void testInvalidInput() {
+	public void testDispatcherWithInvalidInput() {
 		Exception ex = assertThrows(IllegalArgumentException.class, () -> {
 			dispatcher.decode("x42e", 0); // invalid type prefix
 		});
-		assertTrue(ex.getMessage().contains("Unknown bencode type"));
+		assertEquals("Unknown bencode type at index 0", ex.getMessage());
 
 		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode(null, 0); // null input
+		});
+		assertEquals("Input string cannot be null or empty", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("", 0);
+		});
+		assertEquals("Input string cannot be null or empty", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("i42e", -1); // negative index
+		});
+		assertEquals("Start index out of bounds: -1", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("i42e", 10); // index out of bounds
+		});
+		assertEquals("Start index out of bounds: 10", ex.getMessage());
+
+	}
+
+	@Test
+	public void testUnclosedTypes() {
+		Exception ex = assertThrows(IllegalArgumentException.class, () -> {
 			dispatcher.decode("i42", 0); // missing 'e' for integer
 		});
 
-		assertTrue(ex.getMessage().contains("Unknown bencode type"));
+		assertEquals("Invalid bencoded number: missing 'e' at index 0", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("l4:spam4:eggs", 0); // missing 'e' for list
+		});
+		assertEquals("Invalid bencoded list: missing 'e' at index 0", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("d3:spai42e", 0); // missing 'e' for dictionary
+		});
+
+		assertEquals("Invalid bencoded dictionary: missing 'e' at index 0", ex.getMessage());
+
+		ex = assertThrows(IllegalArgumentException.class, () -> {
+			dispatcher.decode("10:spam", 0);
+		});
+		assertEquals("String content exceeds input bounds.", ex.getMessage());
 	}
 }

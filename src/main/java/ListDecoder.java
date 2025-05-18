@@ -26,11 +26,15 @@ public class ListDecoder implements Decoder<List<Object>> {
 		List<Object> list = new ArrayList<>();
 		int index = startIndex + 1; // Skip 'l'
 
-		while (input.charAt(index) != 'e') {
+		while (index < input.length() && input.charAt(index) != 'e') {
 			DecoderDTO<?> element = dispatcher.decode(input, index);
 			list.add(element.getValue());
 			// index is updated in the decode method based on decoded type
 			index = element.getNextIndex();
+		}
+
+		if (index >= input.length() || input.charAt(index) != 'e') {
+			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
 		}
 
 		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
@@ -38,17 +42,22 @@ public class ListDecoder implements Decoder<List<Object>> {
 
 	@Override
 	public DecoderDTO<List<Object>> decode(byte[] bencodedBytes,
-			int startIndex, TorrentInfoDTO infoDTO) throws RuntimeException {
+			int startIndex, TorrentInfoDTO infoDTO) throws IllegalArgumentException {
 		validateInput(bencodedBytes, startIndex, 'l');
 
 		List<Object> list = new ArrayList<>();
 		int index = startIndex + 1; // Skip 'l'
-		while (bencodedBytes[index] != 'e') {
+		while (index < bencodedBytes.length && bencodedBytes[index] != 'e') {
 			DecoderDTO<?> element = dispatcher.decode(bencodedBytes, index, infoDTO);
 			list.add(element.getValue());
 			// index is updated in the decode method based on decoded type
 			index = element.getNextIndex();
 		}
+
+		if (index >= bencodedBytes.length || bencodedBytes[index] != 'e') {
+			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
+		}
+
 		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
 	}
 }
