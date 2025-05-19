@@ -2,7 +2,7 @@ import java.util.Optional;
 
 public interface Decoder<T> {
 	DecoderDTO<T> decode(String bencodedString, int startIndex) throws IllegalArgumentException;
-	DecoderDTO<T> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO) throws IllegalArgumentException;
+	DecoderByteDTO<T> decode(byte[] bencodedBytes, int startIndex) throws IllegalArgumentException;
 
 	default void validateInput(String input, int startIndex, char expectedPrefix) {
 		if (input == null || input.isEmpty()) {

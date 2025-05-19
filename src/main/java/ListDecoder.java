@@ -41,23 +41,23 @@ public class ListDecoder implements Decoder<List<Object>> {
 	}
 
 	@Override
-	public DecoderDTO<List<Object>> decode(byte[] bencodedBytes,
-			int startIndex, TorrentInfoDTO infoDTO) throws IllegalArgumentException {
+	public DecoderByteDTO<List<Object>> decode(byte[] bencodedBytes,
+			int startIndex) throws IllegalArgumentException {
 		validateInput(bencodedBytes, startIndex, 'l');
 
 		List<Object> list = new ArrayList<>();
 		int index = startIndex + 1; // Skip 'l'
 		while (index < bencodedBytes.length && bencodedBytes[index] != 'e') {
-			DecoderDTO<?> element = dispatcher.decode(bencodedBytes, index, infoDTO);
-			list.add(element.getValue());
+			DecoderByteDTO<?> element = dispatcher.decode(bencodedBytes, index);
+			list.add(element.getDecoderDTO().getValue());
 			// index is updated in the decode method based on decoded type
-			index = element.getNextIndex();
+			index = element.getDecoderDTO().getNextIndex();
 		}
 
 		if (index >= bencodedBytes.length || bencodedBytes[index] != 'e') {
 			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
 		}
 
-		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
+		return new DecoderByteDTO<List<Object>>(list, index + 1); // Skip 'e'
 	}
 }

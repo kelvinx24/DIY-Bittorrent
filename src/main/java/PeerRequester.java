@@ -116,10 +116,10 @@ public class PeerRequester {
 			DecoderDispatcher decoderDispatcher = new DecoderDispatcher();
 			DictionaryDecoder dictionaryDecoder = new DictionaryDecoder(decoderDispatcher);
 			TorrentInfoDTO torrentInfoDTO = new TorrentInfoDTO();
-			DecoderDTO<Map<String, Object>> decoded = dictionaryDecoder.decode(response.body(), 0, torrentInfoDTO);
+			DecoderByteDTO<Map<String, Object>> decoded = dictionaryDecoder.decode(response.body(), 0);
 			Map<String, Object> decodedResponse = decoded.getValue();
 
-			NumberPair peersByteRange = torrentInfoDTO.getByteRange("peers");
+			NumberPair peersByteRange = decoded.getByteRange("peers");
 			byte[] peersArray = Arrays.copyOfRange(response.body(), peersByteRange.first(), peersByteRange.second());
 			int interval = (int) decodedResponse.get("interval");
 			return new TrackerResponse(interval, peersArray);

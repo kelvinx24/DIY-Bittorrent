@@ -35,7 +35,7 @@ public class DecoderDispatcher {
 		throw new IllegalArgumentException("Unknown bencode type at index " + startIndex);
 	}
 
-	public DecoderDTO<?> decode(byte[] input, int startIndex, TorrentInfoDTO infoDTO) {
+	public DecoderByteDTO<?> decode(byte[] input, int startIndex) {
 		if (input == null || input.length == 0) {
 			throw new IllegalArgumentException("Input byte array cannot be null or empty");
 		}
@@ -46,10 +46,10 @@ public class DecoderDispatcher {
 
 		byte prefix = input[startIndex];
 
-		if (prefix == 'i') return numberDecoder.decode(input, startIndex, infoDTO);
-		if (prefix >= '0' && prefix <= '9') return textDecoder.decode(input, startIndex, infoDTO);
-		if (prefix == 'l') return listDecoder.decode(input, startIndex, infoDTO);
-		if (prefix == 'd') return dictionaryDecoder.decode(input, startIndex, infoDTO);
+		if (prefix == 'i') return numberDecoder.decode(input, startIndex);
+		if (prefix >= '0' && prefix <= '9') return textDecoder.decode(input, startIndex);
+		if (prefix == 'l') return listDecoder.decode(input, startIndex);
+		if (prefix == 'd') return dictionaryDecoder.decode(input, startIndex);
 
 		throw new IllegalArgumentException("Unknown bencode type at index " + startIndex);
 	}

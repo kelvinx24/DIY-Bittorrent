@@ -36,7 +36,7 @@ public class TextDecoder implements Decoder<String> {
 	}
 
 	@Override
-	public DecoderDTO<String> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO)
+	public DecoderByteDTO<String> decode(byte[] bencodedBytes, int startIndex)
 			throws IllegalArgumentException {
 		if (startIndex < 0 || startIndex >= bencodedBytes.length) {
 			throw new IllegalArgumentException("Start index out of bounds: " + startIndex);
@@ -72,6 +72,6 @@ public class TextDecoder implements Decoder<String> {
 		}
 
 		String value = new String(bencodedBytes, strStart, length);
-		return new DecoderDTO<>(value, strEnd);
+		return new DecoderByteDTO<String>(value, strEnd);
 	}
 }

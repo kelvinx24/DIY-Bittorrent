@@ -80,7 +80,7 @@ public class DecoderTests {
 		assertEquals("Unknown bencode type at index 0", ex.getMessage());
 
 		ex = assertThrows(IllegalArgumentException.class, () -> {
-			dispatcher.decode(null, 0); // null input
+			dispatcher.decode((String) null, 0); // null input
 		});
 		assertEquals("Input string cannot be null or empty", ex.getMessage());
 
@@ -124,5 +124,72 @@ public class DecoderTests {
 			dispatcher.decode("10:spam", 0);
 		});
 		assertEquals("String content exceeds input bounds.", ex.getMessage());
+	}
+
+	@Test
+	public void testByteArrayDecoding() {
+		byte[] bencodedBytes = "i42e".getBytes();
+		DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals(42, result.getDecoderDTO().getValue());
+		assertEquals(4, result.getNextIndex());
+
+		bencodedBytes = "4:spam".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals("spam", result.getDecoderDTO().getValue());
+		assertEquals(6, result.getNextIndex());
+
+		bencodedBytes = "l4:spam4:eggse".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		List<?> list = (List<?>) result.getDecoderDTO().getValue();
+		assertEquals(2, list.size());
+		assertEquals("spam", list.get(0));
+		assertEquals("eggs", list.get(1));
+		assertEquals(14, result.getNextIndex());
+
+		bencodedBytes = "d3:bar4:spam3:fooi42ee".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		Map<?, ?> dict = (Map<?, ?>) result.getDecoderDTO().getValue();
+		assertEquals(2, dict.size());
+		assertEquals("spam", dict.get("bar"));
+		assertEquals(42, dict.get("foo"));
+		assertEquals(bencodedBytes.length, result.getNextIndex());
+
+		String input = "d4:listl4:spami7ee3:numi10ee";
+		result = dispatcher.decode(input.getBytes(), 0);
+		Map<?, ?> dict2 = (Map<?, ?>) result.getDecoderDTO().getValue();
+
+		assertTrue(dict2.containsKey("list"));
+		List<?> list2 = (List<?>) dict2.get("list");
+		assertEquals("spam", list2.get(0));
+		assertEquals(7, list2.get(1));
+
+		assertEquals(10, dict2.get("num"));
+		assertEquals(input.length(), result.getNextIndex());
+
+	}
+
+	@Test
+	public void testParsingByteRanges() {
+		byte[] bencodedBytes = "i42e".getBytes();
+		DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals(0, result.getByteRanges().size());
+
+		bencodedBytes = "4:spam".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals(0, result.getByteRanges().size());
+
+		bencodedBytes = "l4:spam4:eggse".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals(0, result.getByteRanges().size());
+
+		bencodedBytes = "d3:bar4:spam3:fooi42ee".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		assertEquals(2, result.getByteRanges().size());
+		assertTrue(result.getByteRanges().containsKey("bar"));
+		assertTrue(result.getByteRanges().containsKey("foo"));
+
+		NumberPair barRange = result.getByteRanges().get("bar");
+		byte[] barBytes = Arrays.copyOfRange(bencodedBytes, barRange.first(), barRange.second());
+		assertEquals("spam", new String(barBytes));
 	}
 }

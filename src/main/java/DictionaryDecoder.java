@@ -41,9 +41,9 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
       // Move the index to the end of the key
       index = keyResult.getNextIndex();
       if (index >= input.length() || input.charAt(index) == 'e') {
-				throw new IllegalArgumentException(
-						"Invalid bencoded dictionary: missing value for key '" + key + "' at index " + index);
-			}
+        throw new IllegalArgumentException(
+            "Invalid bencoded dictionary: missing value for key '" + key + "' at index " + index);
+      }
 
       DecoderDTO<?> valueResult = dispatcher.decode(input, index);
       dict.put(key, valueResult.getValue());
@@ -60,8 +60,8 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
   }
 
   @Override
-  public DecoderDTO<Map<String, Object>> decode(byte[] bencodedBytes, int startIndex,
-      TorrentInfoDTO infoDTO) throws IllegalArgumentException {
+  public DecoderByteDTO<Map<String, Object>> decode(byte[] bencodedBytes, int startIndex)
+      throws IllegalArgumentException {
     validateInput(bencodedBytes, startIndex, 'd');
 
     Map<String, Object> dict = new LinkedHashMap<>();
@@ -69,8 +69,10 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     int infoIndexStart = index; // Store the start index for info
     int infoIndexEnd = index; // Initialize the end index for info
 
+    LinkedHashMap<String, NumberPair> byteRanges = new LinkedHashMap<>();
     while (index < bencodedBytes.length && bencodedBytes[index] != 'e') {
-      DecoderDTO<?> keyResult = dispatcher.decode(bencodedBytes, index, infoDTO);
+      DecoderByteDTO<?> keyResultByte = dispatcher.decode(bencodedBytes, index);
+      DecoderDTO<?> keyResult = keyResultByte.getDecoderDTO();
       String key = null;
       if (keyResult.getValue() == null || !(keyResult.getValue() instanceof String)) {
         throw new IllegalArgumentException(
@@ -81,34 +83,45 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
       // Move the index to the end of the key
       index = keyResult.getNextIndex();
       if (index >= bencodedBytes.length || bencodedBytes[index] == 'e') {
-				throw new IllegalArgumentException(
-						"Invalid bencoded dictionary: missing value for key '" + key + "' at index " + index);
-			}
+        throw new IllegalArgumentException(
+            "Invalid bencoded dictionary: missing value for key '" + key + "' at index " + index);
+      }
 
       infoIndexStart = index;
 
-      DecoderDTO<?> valueResult = dispatcher.decode(bencodedBytes, index, infoDTO);
+      DecoderByteDTO<?> valueResultByte = dispatcher.decode(bencodedBytes, index);
+      DecoderDTO<?> valueResult = valueResultByte.getDecoderDTO();
       dict.put(key, valueResult.getValue());
       // Move the index to the end of the value
       index = valueResult.getNextIndex();
 
-      if (infoDTO != null) {
+      if (valueResultByte != null) {
         if (!key.equals("info")) {
           // shift the infoIndexStart to the value start
           infoIndexStart = infoIndexStart + 3;
         }
         infoIndexEnd = index;
-        infoDTO.addByteRange(key, infoIndexStart, infoIndexEnd);
+        byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
+      }
+
+      for (Map.Entry<String, NumberPair> entry : valueResultByte.getByteRanges().entrySet()) {
+        String keyByteRange = entry.getKey();
+        NumberPair valueByteRange = entry.getValue();
+        byteRanges.put(keyByteRange, valueByteRange);
       }
 
     }
 
     if (index >= bencodedBytes.length || bencodedBytes[index] != 'e') {
-			throw new IllegalArgumentException(
-					"Invalid bencoded dictionary: missing 'e' at index " + startIndex);
-		}
+      throw new IllegalArgumentException(
+          "Invalid bencoded dictionary: missing 'e' at index " + startIndex);
+    }
 
-    return new DecoderDTO<Map<String, Object>>(dict, index + 1); // Skip 'e'
+    int nextIndex = index + 1; // Skip 'e'
+    DecoderByteDTO<Map<String, Object>> byteDTO = new DecoderByteDTO<>(
+        new DecoderDTO<>(dict, nextIndex), byteRanges, startIndex + 1);
+
+    return byteDTO;
   }
 
 }

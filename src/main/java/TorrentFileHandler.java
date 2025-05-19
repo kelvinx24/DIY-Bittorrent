@@ -40,30 +40,29 @@ public class TorrentFileHandler {
 			this.fileContent = Files.readAllBytes(torrentFilePath);
 
 			DecoderDispatcher decoderDispatcher = new DecoderDispatcher();
-			TorrentInfoDTO torrentInfoDTO = new TorrentInfoDTO();
-			DecoderDTO<?> decoded = decoderDispatcher.decode(fileContent, 0, torrentInfoDTO);
+			DecoderByteDTO<?> decoded = decoderDispatcher.decode(fileContent, 0);
 
-			this.fileContentMap = safeCastMap(decoded.getValue(), "top-level bencoded map");
+			this.fileContentMap = safeCastMap(decoded.getDecoderDTO().getValue(), "top-level bencoded map");
 			this.infoMap = safeCastMap(fileContentMap.get("info"), "'info' dictionary");
 
 			this.trackerUrl = extractString(fileContentMap, "announce");
 			this.pieceLength = extractInt(infoMap, "piece length");
 			this.fileLength = extractInt(infoMap, "length");
 
-			computeInfoHash(torrentInfoDTO);
-			extractPieceHashes(torrentInfoDTO);
+			computeInfoHash(decoded);
+			extractPieceHashes(decoded);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Failed to read torrent file", e);
 		}
 	}
 
-	private void computeInfoHash(TorrentInfoDTO dto) {
+	private void computeInfoHash(DecoderByteDTO<?> dto) {
 		NumberPair range = dto.getInfoByteRange();
 		byte[] infoBytes = Arrays.copyOfRange(fileContent, range.first(), range.second());
 		this.fileHash = sha1Hash(infoBytes);
 	}
 
-	private void extractPieceHashes(TorrentInfoDTO dto) {
+	private void extractPieceHashes(DecoderByteDTO<?> dto) {
 		NumberPair range = dto.getByteRange("pieces");
 		for (int i = range.first(); i < range.second(); i += FILE_HASH_LENGTH) {
 			if (i + FILE_HASH_LENGTH > range.second()) {

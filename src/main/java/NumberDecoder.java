@@ -29,7 +29,7 @@ public class NumberDecoder implements Decoder<Integer>{
 	}
 
 	@Override
-	public DecoderDTO<Integer> decode(byte[] bencodedBytes, int startIndex, TorrentInfoDTO infoDTO) throws IllegalArgumentException {
+	public DecoderByteDTO<Integer> decode(byte[] bencodedBytes, int startIndex) throws IllegalArgumentException {
 		validateInput(bencodedBytes, startIndex, 'i');
 
 		int endIndex = startIndex + 1;
@@ -53,7 +53,7 @@ public class NumberDecoder implements Decoder<Integer>{
 			throw new IllegalArgumentException("Invalid number format at index " + startIndex, e);
 		}
 
-		return new DecoderDTO<Integer>(Integer.valueOf(value), endIndex + 1);
+		return new DecoderByteDTO<Integer>(Integer.valueOf(value), endIndex + 1);
 
 	}
 
