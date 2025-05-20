@@ -1,5 +1,3 @@
-import java.util.Optional;
-
 public interface Decoder<T> {
 	DecoderDTO<T> decode(String bencodedString, int startIndex) throws IllegalArgumentException;
 	DecoderByteDTO<T> decode(byte[] bencodedBytes, int startIndex) throws IllegalArgumentException;

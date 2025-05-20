@@ -1,6 +1,5 @@
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class DecoderDispatcher {
 	private final Decoder<Integer> numberDecoder = new NumberDecoder();

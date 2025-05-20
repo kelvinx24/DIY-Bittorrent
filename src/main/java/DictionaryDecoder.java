@@ -1,6 +1,5 @@
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 
@@ -10,14 +9,20 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     this.dispatcher = dispatcher;
   }
 
-  @Override
   /**
-   * Decodes a bencoded dictionary from the input string starting at the given index.
-   * Repeatedly calls the dispatcher to decode each key-value pair until it finds 'e'.
-   * Recursively decodes the keys and values using the dispatcher.
-   * The dictionary is expected to be in the format "d<key1><value1><key2><value2>...e".
-   * For example, "d3:spami42e3:eggs4:spam" means a dictionary with two entries:
+   * Decodes a bencoded dictionary from the input string starting at the given index. Repeatedly
+   * calls the dispatcher to decode each key-value pair until it finds 'e'. Recursively decodes the
+   * keys and values using the dispatcher. The dictionary is expected to be in the format
+   * "d<key1><value1><key2><value2>...e". For example, "d3:spami42e3:eggs4:spam" means a dictionary
+   * with two entries:
+   *
+   * @param input      the bencoded string to decode.
+   * @param startIndex the index to start decoding from.
+   * @return A DecoderDTO containing the decoded dictionary and the next index to read from.
+   * @throws IllegalArgumentException if the input is invalid or if the dictionary format is
+   *                                  incorrect.
    */
+  @Override
   public DecoderDTO<Map<String, Object>> decode(String input,
       int startIndex) throws IllegalArgumentException {
 
@@ -29,7 +34,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     while (index < input.length() && input.charAt(index) != 'e') {
       DecoderDTO<?> keyResult = dispatcher.decode(input, index);
 
-      String key = null;
+      String key;
       if (keyResult.getValue() == null || !(keyResult.getValue() instanceof String)) {
         throw new IllegalArgumentException(
             "Key cannot be null or non-string type at index " + index);
@@ -56,7 +61,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
           "Invalid bencoded dictionary: missing 'e' at index " + startIndex);
     }
 
-    return new DecoderDTO<Map<String, Object>>(dict, index + 1); // Skip 'e'
+    return new DecoderDTO<>(dict, index + 1); // Skip 'e'
   }
 
   @Override
@@ -73,7 +78,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     while (index < bencodedBytes.length && bencodedBytes[index] != 'e') {
       DecoderByteDTO<?> keyResultByte = dispatcher.decode(bencodedBytes, index);
       DecoderDTO<?> keyResult = keyResultByte.getDecoderDTO();
-      String key = null;
+      String key;
       if (keyResult.getValue() == null || !(keyResult.getValue() instanceof String)) {
         throw new IllegalArgumentException(
             "Key cannot be null or non-string type at index " + index);
@@ -95,17 +100,14 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
       // Move the index to the end of the value
       index = valueResult.getNextIndex();
 
-      if (valueResultByte != null) {
-        if (key.equals("info")) {
-          // shift the infoIndexStart to the value start
-          infoIndexEnd = index;
-          byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
-        }
-        else {
-          infoIndexStart = valueResultByte.getValueRange().first();
-          infoIndexEnd = valueResultByte.getValueRange().second();
-          byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
-        }
+      if (key.equals("info")) {
+        // shift the infoIndexStart to the value start
+        infoIndexEnd = index;
+        byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
+      } else {
+        infoIndexStart = valueResultByte.getValueRange().first();
+        infoIndexEnd = valueResultByte.getValueRange().second();
+        byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
       }
 
       for (Map.Entry<String, NumberPair> entry : valueResultByte.getByteRanges().entrySet()) {
@@ -122,10 +124,10 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     }
 
     int nextIndex = index + 1; // Skip 'e'
-    DecoderByteDTO<Map<String, Object>> byteDTO = new DecoderByteDTO<>(new DecoderDTO<>(dict, nextIndex),
-        byteRanges, new NumberPair(startIndex + 1 , index - 1));
 
-    return byteDTO;
+    return new DecoderByteDTO<>(
+        new DecoderDTO<>(dict, nextIndex),
+        byteRanges, new NumberPair(startIndex + 1, index - 1));
   }
 
 }

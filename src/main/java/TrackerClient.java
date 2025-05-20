@@ -32,7 +32,7 @@ public class TrackerClient {
   private int uploaded;
   private int downloaded;
   private int left;
-  private int compactMode;
+  private final int compactMode;
 
   private HttpClient client;
 

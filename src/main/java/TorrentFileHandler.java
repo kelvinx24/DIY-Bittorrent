@@ -16,7 +16,7 @@ public class TorrentFileHandler {
 	private int fileLength;
 	private String trackerUrl;
 	private int pieceLength;
-	private List<byte[]> hashedPieces = new ArrayList<>();
+	private final List<byte[]> hashedPieces = new ArrayList<>();
 
 	public TorrentFileHandler(String fileName) {
 		Objects.requireNonNull(fileName, "File name cannot be null");
@@ -74,14 +74,14 @@ public class TorrentFileHandler {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> safeCastMap(Object obj, String context) {
+	public static Map<String, Object> safeCastMap(Object obj, String context) {
 		if (!(obj instanceof Map)) {
 			throw new IllegalArgumentException("Expected a Map for " + context);
 		}
 		return (Map<String, Object>) obj;
 	}
 
-	private static String extractString(Map<String, Object> map, String key) {
+	public static String extractString(Map<String, Object> map, String key) {
 		Object value = map.get(key);
 		if (!(value instanceof String)) {
 			throw new IllegalArgumentException("Expected a string for key: " + key);
@@ -89,7 +89,7 @@ public class TorrentFileHandler {
 		return (String) value;
 	}
 
-	private static int extractInt(Map<String, Object> map, String key) {
+	public static int extractInt(Map<String, Object> map, String key) {
 		Object value = map.get(key);
 		if (!(value instanceof Integer)) {
 			throw new IllegalArgumentException("Expected an integer for key: " + key);
