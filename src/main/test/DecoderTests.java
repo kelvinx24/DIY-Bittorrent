@@ -28,7 +28,7 @@ public class DecoderTests {
   public void testListDecoder() {
     Decoder<List<Object>> listDecoder = new ListDecoder(dispatcher);
     DecoderDTO<List<Object>> result = listDecoder.decode("l4:spam4:eggse", 0);
-    List<?> list = (List<?>) result.getValue();
+    List<?> list = result.getValue();
 
     assertEquals(2, list.size());
     assertEquals("spam", list.get(0));
@@ -41,7 +41,7 @@ public class DecoderTests {
     Decoder<Map<String, Object>> dictDecoder = new DictionaryDecoder(dispatcher);
     String input = "d3:bar4:spam3:fooi42ee";
     DecoderDTO<Map<String, Object>> result = dictDecoder.decode(input, 0);
-    Map<?, ?> dict = (Map<?, ?>) result.getValue();
+    Map<?, ?> dict =  result.getValue();
 
     assertEquals(2, dict.size());
     assertEquals("spam", dict.get("bar"));
