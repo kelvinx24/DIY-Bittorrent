@@ -5,24 +5,24 @@ public class DecoderByteDTO<T> {
   private final DecoderDTO<T> decoderDTO;
   private final Map<String, NumberPair> byteRanges;
 
-  private final int valueStartIndex;
+  private final NumberPair valueRange;
 
-  public DecoderByteDTO(DecoderDTO<T> decoderDTO, Map<String, NumberPair> byteRanges, int valueStartIndex) {
+  public DecoderByteDTO(DecoderDTO<T> decoderDTO, Map<String, NumberPair> byteRanges, NumberPair valueRange) {
     this.decoderDTO = decoderDTO;
     this.byteRanges = byteRanges;
-    this.valueStartIndex = valueStartIndex;
+    this.valueRange = valueRange;
   }
 
-  public DecoderByteDTO(DecoderDTO<T> decoderDTO) {
-    this(decoderDTO, new LinkedHashMap<>(), -1);
+  public DecoderByteDTO(DecoderDTO<T> decoderDTO, NumberPair valueRange) {
+    this(decoderDTO, new LinkedHashMap<>(), valueRange);
   }
 
   public DecoderByteDTO(DecoderByteDTO<T> decoderByteDTO) {
-    this(decoderByteDTO.getDecoderDTO(), new LinkedHashMap<>(decoderByteDTO.getByteRanges()), decoderByteDTO.valueStartIndex);
+    this(decoderByteDTO.getDecoderDTO(), new LinkedHashMap<>(decoderByteDTO.getByteRanges()), decoderByteDTO.valueRange);
   }
 
-  public DecoderByteDTO(T value, int nextIndex) {
-    this(new DecoderDTO<>(value, nextIndex), new LinkedHashMap<>(), -1);
+  public DecoderByteDTO(T value, int nextIndex, int valueStartIndex, int valueEndIndex) {
+    this(new DecoderDTO<>(value, nextIndex), new LinkedHashMap<>(), new NumberPair(valueStartIndex, valueEndIndex));
   }
 
 
@@ -54,7 +54,7 @@ public class DecoderByteDTO<T> {
     return this.decoderDTO.getValue();
   }
 
-  public int getValueStartIndex() {
-    return valueStartIndex;
+  public NumberPair getValueRange() {
+    return this.valueRange;
   }
 }

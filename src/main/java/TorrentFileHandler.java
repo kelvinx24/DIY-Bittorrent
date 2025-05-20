@@ -16,7 +16,7 @@ public class TorrentFileHandler {
 	private int fileLength;
 	private String trackerUrl;
 	private int pieceLength;
-	private List<byte[]> hashedPieces = new ArrayList<>();
+	private final List<byte[]> hashedPieces = new ArrayList<>();
 
 	public TorrentFileHandler(String fileName) {
 		Objects.requireNonNull(fileName, "File name cannot be null");
@@ -64,8 +64,9 @@ public class TorrentFileHandler {
 
 	private void extractPieceHashes(DecoderByteDTO<?> dto) {
 		NumberPair range = dto.getByteRange("pieces");
-		for (int i = range.first(); i < range.second(); i += FILE_HASH_LENGTH) {
-			if (i + FILE_HASH_LENGTH > range.second()) {
+		int adjustedEnd = range.second() + 1;
+		for (int i = range.first(); i < adjustedEnd; i += FILE_HASH_LENGTH) {
+			if (i + FILE_HASH_LENGTH > adjustedEnd) {
 				throw new IllegalArgumentException("Invalid pieces field: not a multiple of 20 bytes");
 			}
 			hashedPieces.add(Arrays.copyOfRange(fileContent, i, i + FILE_HASH_LENGTH));
@@ -73,14 +74,14 @@ public class TorrentFileHandler {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> safeCastMap(Object obj, String context) {
+	public static Map<String, Object> safeCastMap(Object obj, String context) {
 		if (!(obj instanceof Map)) {
 			throw new IllegalArgumentException("Expected a Map for " + context);
 		}
 		return (Map<String, Object>) obj;
 	}
 
-	private static String extractString(Map<String, Object> map, String key) {
+	public static String extractString(Map<String, Object> map, String key) {
 		Object value = map.get(key);
 		if (!(value instanceof String)) {
 			throw new IllegalArgumentException("Expected a string for key: " + key);
@@ -88,7 +89,7 @@ public class TorrentFileHandler {
 		return (String) value;
 	}
 
-	private static int extractInt(Map<String, Object> map, String key) {
+	public static int extractInt(Map<String, Object> map, String key) {
 		Object value = map.get(key);
 		if (!(value instanceof Integer)) {
 			throw new IllegalArgumentException("Expected an integer for key: " + key);

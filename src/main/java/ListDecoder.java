@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class ListDecoder implements Decoder<List<Object>> {
 	private final DecoderDispatcher dispatcher;
@@ -17,7 +16,7 @@ public class ListDecoder implements Decoder<List<Object>> {
 	 *
 	 * @param input      The bencoded string to decode.
 	 * @param startIndex The index to start decoding from.
-	 * @return
+	 * @return A DecoderDTO containing the decoded list and the next index to read from.
 	 */
 	public DecoderDTO<List<Object>> decode(String input,
 			int startIndex) throws IllegalArgumentException {
@@ -37,7 +36,7 @@ public class ListDecoder implements Decoder<List<Object>> {
 			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
 		}
 
-		return new DecoderDTO<List<Object>>(list, index + 1); // Skip 'e'
+		return new DecoderDTO<>(list, index + 1); // Skip 'e'
 	}
 
 	@Override
@@ -58,6 +57,6 @@ public class ListDecoder implements Decoder<List<Object>> {
 			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
 		}
 
-		return new DecoderByteDTO<List<Object>>(list, index + 1); // Skip 'e'
+		return new DecoderByteDTO<>(list, index + 1, startIndex + 1, index - 1); // Skip 'e'
 	}
 }

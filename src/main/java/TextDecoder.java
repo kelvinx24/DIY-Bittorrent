@@ -72,6 +72,6 @@ public class TextDecoder implements Decoder<String> {
 		}
 
 		String value = new String(bencodedBytes, strStart, length);
-		return new DecoderByteDTO<String>(value, strEnd);
+		return new DecoderByteDTO<>(value, strEnd, strStart, strEnd - 1);
 	}
 }

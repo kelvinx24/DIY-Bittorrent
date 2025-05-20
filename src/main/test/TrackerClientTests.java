@@ -1,5 +1,5 @@
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TrackerClientTests {
@@ -11,7 +11,6 @@ public class TrackerClientTests {
     String peerId = "12345678901234567890";
     int fileSize = 1024;
     byte[] infoHash = new byte[20];
-
 
     TrackerClient trackerClient = new TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
     assertNotNull(trackerClient);
@@ -39,45 +38,37 @@ public class TrackerClientTests {
     byte[] infoHash = new byte[20];
 
     //TrackerClient trackerClient = new TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
-    Exception ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(null, port, fileSize, infoHash, peerId);
-    });
+    Exception ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(null, port, fileSize, infoHash, peerId));
 
     assertEquals("Tracker URL cannot be null or empty", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient("", port, fileSize, infoHash, peerId);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient("", port, fileSize, infoHash, peerId));
     assertEquals("Tracker URL cannot be null or empty", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, port, fileSize, infoHash, null);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, port, fileSize, infoHash, null));
     assertEquals("Peer ID cannot be null or empty", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, port, fileSize, infoHash, "");
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, port, fileSize, infoHash, ""));
     assertEquals("Peer ID cannot be null or empty", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, -1, fileSize, infoHash, peerId);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, -1, fileSize, infoHash, peerId));
     assertEquals("Port must be a positive integer", ex.getMessage());
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, port, -1, infoHash, peerId);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, port, -1, infoHash, peerId));
 
     assertEquals("File size must be a positive integer", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, port, fileSize, new byte[0], peerId);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, port, fileSize, new byte[0], peerId));
     assertEquals("Info hash must be 20 bytes long", ex.getMessage());
 
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      new TrackerClient(trackerUrl, port, fileSize, infoHash, "sjfkldasjs");
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> new TrackerClient(trackerUrl, port, fileSize, infoHash, "sjfkldasjs"));
     assertEquals("Peer ID must be 20 bytes long", ex.getMessage());
 
   }
@@ -85,15 +76,13 @@ public class TrackerClientTests {
   @Test
   public void testBadURLEncodedHash() {
     // null hash
-    Exception ex = assertThrows(IllegalArgumentException.class, () -> {
-      TrackerClient.urlEncodeHash(null);
-    });
+    Exception ex = assertThrows(IllegalArgumentException.class,
+        () -> TrackerClient.urlEncodeHash(null));
     assertEquals("Hash cannot be null or empty", ex.getMessage());
 
     // empty hash
-    ex = assertThrows(IllegalArgumentException.class, () -> {
-      TrackerClient.urlEncodeHash(new byte[0]);
-    });
+    ex = assertThrows(IllegalArgumentException.class,
+        () -> TrackerClient.urlEncodeHash(new byte[0]));
     assertEquals("Hash cannot be null or empty", ex.getMessage());
   }
 

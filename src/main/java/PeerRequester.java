@@ -120,7 +120,7 @@ public class PeerRequester {
 			Map<String, Object> decodedResponse = decoded.getValue();
 
 			NumberPair peersByteRange = decoded.getByteRange("peers");
-			byte[] peersArray = Arrays.copyOfRange(response.body(), peersByteRange.first(), peersByteRange.second());
+			byte[] peersArray = Arrays.copyOfRange(response.body(), peersByteRange.first(), peersByteRange.second() + 1);
 			int interval = (int) decodedResponse.get("interval");
 			return new TrackerResponse(interval, peersArray);
 
