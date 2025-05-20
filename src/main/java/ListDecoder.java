@@ -58,6 +58,6 @@ public class ListDecoder implements Decoder<List<Object>> {
 			throw new IllegalArgumentException("Invalid bencoded list: missing 'e' at index " + startIndex);
 		}
 
-		return new DecoderByteDTO<List<Object>>(list, index + 1, startIndex, index); // Skip 'e'
+		return new DecoderByteDTO<List<Object>>(list, index + 1, startIndex + 1, index - 1); // Skip 'e'
 	}
 }

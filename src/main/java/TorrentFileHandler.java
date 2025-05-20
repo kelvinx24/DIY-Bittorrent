@@ -64,8 +64,9 @@ public class TorrentFileHandler {
 
 	private void extractPieceHashes(DecoderByteDTO<?> dto) {
 		NumberPair range = dto.getByteRange("pieces");
-		for (int i = range.first() + 1; i < range.second() - 1; i += FILE_HASH_LENGTH) {
-			if (i + FILE_HASH_LENGTH > range.second()) {
+		int adjustedEnd = range.second() + 1;
+		for (int i = range.first(); i < adjustedEnd; i += FILE_HASH_LENGTH) {
+			if (i + FILE_HASH_LENGTH > adjustedEnd) {
 				throw new IllegalArgumentException("Invalid pieces field: not a multiple of 20 bytes");
 			}
 			hashedPieces.add(Arrays.copyOfRange(fileContent, i, i + FILE_HASH_LENGTH));
