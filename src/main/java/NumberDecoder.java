@@ -53,7 +53,7 @@ public class NumberDecoder implements Decoder<Integer>{
 			throw new IllegalArgumentException("Invalid number format at index " + startIndex, e);
 		}
 
-		return new DecoderByteDTO<Integer>(Integer.valueOf(value), endIndex + 1);
+		return new DecoderByteDTO<Integer>(Integer.valueOf(value), endIndex + 1, startIndex, endIndex);
 
 	}
 

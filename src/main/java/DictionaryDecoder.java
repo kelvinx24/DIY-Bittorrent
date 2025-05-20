@@ -98,9 +98,9 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
       if (valueResultByte != null) {
         if (!key.equals("info")) {
           // shift the infoIndexStart to the value start
-          infoIndexStart = infoIndexStart + 3;
+          infoIndexStart = valueResultByte.getValueRange().first();
         }
-        infoIndexEnd = index;
+        infoIndexEnd = valueResultByte.getValueRange().second();
         byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
       }
 
@@ -118,8 +118,8 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
     }
 
     int nextIndex = index + 1; // Skip 'e'
-    DecoderByteDTO<Map<String, Object>> byteDTO = new DecoderByteDTO<>(
-        new DecoderDTO<>(dict, nextIndex), byteRanges, startIndex + 1);
+    DecoderByteDTO<Map<String, Object>> byteDTO = new DecoderByteDTO<>(new DecoderDTO<>(dict, nextIndex),
+        byteRanges, new NumberPair(startIndex , index));
 
     return byteDTO;
   }

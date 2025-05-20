@@ -189,7 +189,31 @@ public class DecoderTests {
 		assertTrue(result.getByteRanges().containsKey("foo"));
 
 		NumberPair barRange = result.getByteRanges().get("bar");
-		byte[] barBytes = Arrays.copyOfRange(bencodedBytes, barRange.first(), barRange.second());
-		assertEquals("spam", new String(barBytes));
+		// Add 1 to the end index since the end index is exclusive for Arrays.copyOfRange
+		byte[] barBytes = Arrays.copyOfRange(bencodedBytes, barRange.first(), barRange.second() + 1);
+		assertEquals("4:spam", new String(barBytes));
+
+		NumberPair fooRange = result.getByteRanges().get("foo");
+		byte[] fooBytes = Arrays.copyOfRange(bencodedBytes, fooRange.first(), fooRange.second() + 1);
+		assertEquals("i42e", new String(fooBytes));
+
+		// Nested dictionary
+		bencodedBytes = "d4:dictd3:bari42eee".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		NumberPair dictRange = result.getByteRanges().get("dict");
+		byte[] dictBytes = Arrays.copyOfRange(bencodedBytes, dictRange.first(), dictRange.second() + 1);
+
+		assertEquals("d3:bari42ee", new String(dictBytes));
+		assertEquals(2, result.getByteRanges().size());
+
+		// Nested list
+		bencodedBytes = "d4:listl4:spami7ee3:numi10ee".getBytes();
+		result = dispatcher.decode(bencodedBytes, 0);
+		NumberPair listRange = result.getByteRanges().get("list");
+		byte[] listBytes = Arrays.copyOfRange(bencodedBytes, listRange.first(), listRange.second() + 1);
+		assertEquals("l4:spami7ee", new String(listBytes));
+		assertEquals(2, result.getByteRanges().size());
+
 	}
+
 }
