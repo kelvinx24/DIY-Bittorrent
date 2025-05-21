@@ -46,7 +46,7 @@ public class Main {
         System.out.println("File Name: " + tfh.getFileName());
         System.out.println("File Length: " + tfh.getFileLength());
         System.out.println("Tracker URL: " + tfh.getTrackerUrl());
-        System.out.println("Hash: " + TorrentFileHandler.bytesToHex(tfh.getFileHash()));
+        System.out.println("Hash: " + TorrentFileHandler.bytesToHex(tfh.getInfoHash()));
         System.out.println("Content: " + gson.toJson(tfh.getFileContentMap()));
         System.out.println("Piece Length: " + tfh.getPieceLength());
         System.out.println("Hashed Pieces: ");
@@ -60,7 +60,7 @@ public class Main {
     else if (command.equals("peers")) {
         String filepath = args[1];
         TorrentFileHandler tfh = new TorrentFileHandler(filepath);
-        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getInfoHash());
         TrackerResponse tr = peerRequester.requestTracker();
         System.out.println("Interval: " + tr.getInterval());
         System.out.println("Peers: ");
@@ -76,7 +76,7 @@ public class Main {
         int port = Integer.parseInt(peerParts[1]);
 
         TorrentFileHandler tfh = new TorrentFileHandler(filepath);
-        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getInfoHash());
         byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
         System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
     }
@@ -84,7 +84,7 @@ public class Main {
         String filepath = args[1];
 
         TorrentFileHandler tfh = new TorrentFileHandler(filepath);
-        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getInfoHash());
         TrackerResponse tr = peerRequester.requestTracker();
         Map.Entry<String, Integer> entr = tr.getPeersMap().entrySet().iterator().next();
 
@@ -103,7 +103,7 @@ public class Main {
         String filepath = args[1];
 
         TorrentFileHandler tfh = new TorrentFileHandler(filepath);
-        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getFileHash());
+        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getInfoHash());
         TrackerResponse tr = peerRequester.requestTracker();
         Map.Entry<String, Integer> entr = tr.getPeersMap().entrySet().iterator().next();
 

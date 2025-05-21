@@ -122,6 +122,8 @@ public class PeerRequester {
 			NumberPair peersByteRange = decoded.getByteRange("peers");
 			byte[] peersArray = Arrays.copyOfRange(response.body(), peersByteRange.first(), peersByteRange.second() + 1);
 			int interval = (int) decodedResponse.get("interval");
+
+			System.out.println("Interval: " + interval);
 			return new TrackerResponse(interval, peersArray);
 
 		} catch (IOException e) {

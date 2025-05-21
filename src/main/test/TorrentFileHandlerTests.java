@@ -1,8 +1,5 @@
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.*;
 
 
 public class TorrentFileHandlerTests
@@ -52,7 +49,7 @@ public class TorrentFileHandlerTests
 		assertNotNull(torrentFileHandler.getFileContentMap());
 		assertNotNull(torrentFileHandler.getInfoMap());
 		assertNotNull(torrentFileHandler.getTrackerUrl());
-		assertNotNull(torrentFileHandler.getFileHash());
+		assertNotNull(torrentFileHandler.getInfoHash());
 		assertNotNull(torrentFileHandler.getHashedPieces());
 		assertTrue(torrentFileHandler.getHashedPieces().size() > 0);
 		assertTrue(torrentFileHandler.getPieceLength() > 0);

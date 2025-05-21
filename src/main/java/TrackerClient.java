@@ -1,10 +1,19 @@
+import java.io.IOException;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class TrackerClient {
 
   public static final Set<Byte> UNRESERVED = new HashSet<>();
+  private static final String PEERS_KEY = "peers";
+  private static final String INTERVAL_KEY = "interval";
 
   static {
     // Populate unreserved byte set
@@ -34,10 +43,16 @@ public class TrackerClient {
   private int left;
   private final int compactMode;
 
-  private HttpClient client;
+  private final HttpClient client;
 
   public TrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
       String peerId) throws IllegalArgumentException {
+    this(trackerUrl, port, downloadedFileSize, infoHash, peerId,
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
+  }
+
+  public TrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
+      String peerId, HttpClient client) throws IllegalArgumentException {
     if (trackerUrl == null || trackerUrl.isEmpty()) {
       throw new IllegalArgumentException("Tracker URL cannot be null or empty");
     }
@@ -71,10 +86,80 @@ public class TrackerClient {
     this.downloaded = 0;
     this.left = downloadedFileSize;
     this.compactMode = 1; // Assuming compact mode is enabled
+
+    this.client = client;
   }
 
-  public TrackerResponse requestTracker() {
-    return null;
+
+  public TrackerResponse requestTracker() throws TrackerCommunicationException, IllegalArgumentException, MalformedTrackerResponseException {
+    String trackerUrl = buildTrackerUrl();
+    System.out.println("Requesting tracker: " + trackerUrl);
+
+    try {
+      HttpResponse<byte[]> response = sendTrackerRequest(trackerUrl);
+      return parseTrackerResponse(response.body());
+    } catch (IOException | InterruptedException e) {
+      throw new TrackerCommunicationException("Failed to contact tracker" + e.getMessage());
+    }
+  }
+
+  private HttpResponse<byte[]> sendTrackerRequest(String trackerUrl) throws IOException, InterruptedException, TrackerCommunicationException {
+    HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create(trackerUrl))
+        .GET()
+        .build();
+
+    HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+    if (response.statusCode() != 200) {
+      throw new TrackerCommunicationException("Tracker returned non-200 response: " + response.statusCode());
+    }
+    return response;
+  }
+
+  private TrackerResponse parseTrackerResponse(byte[] responseBody) throws IllegalArgumentException, MalformedTrackerResponseException {
+    try {
+      DecoderDispatcher decoderDispatcher = new DecoderDispatcher();
+      DictionaryDecoder dictionaryDecoder = new DictionaryDecoder(decoderDispatcher);
+      DecoderByteDTO<Map<String, Object>> decoded = dictionaryDecoder.decode(responseBody, 0);
+      Map<String, Object> decodedResponse = decoded.getValue();
+
+      // Validate required fields
+      if (!decodedResponse.containsKey(PEERS_KEY) || !decodedResponse.containsKey(INTERVAL_KEY)) {
+        StringBuilder exceptionMessage = new StringBuilder("Missing 'peers' or 'interval' in tracker response");
+        exceptionMessage.append("\n").append("Current Response: ").append(decodedResponse);
+        throw new MalformedTrackerResponseException(exceptionMessage.toString());
+      }
+
+      // Extract peers
+      NumberPair peersByteRange = decoded.getByteRange(PEERS_KEY);
+      int start = peersByteRange.first();
+      int endExclusive = peersByteRange.second() + 1; // ensure contract is correct
+      byte[] peersArray = Arrays.copyOfRange(responseBody, start, endExclusive);
+
+      // Extract interval
+      int interval = TorrentFileHandler.extractInt(decodedResponse, INTERVAL_KEY);
+
+      return new TrackerResponse(interval, peersArray);
+    } catch (MalformedTrackerResponseException e) {
+      throw e;
+    }
+    catch (Exception e) {
+      throw new IllegalArgumentException("Failed to decode tracker response: "
+          + e.getMessage() + "\n" + "Response: " + Arrays.toString(responseBody), e);
+    }
+  }
+
+  private String buildTrackerUrl() {
+    StringBuilder url = new StringBuilder(trackerUrl);
+    //url.append("?info_hash=").append(URLEncoder.encode(new String(infoHash, StandardCharsets.ISO_8859_1), "ISO-8859-1"));
+    url.append("?info_hash=").append(urlEncodeHash(infoHash));
+    url.append("&peer_id=").append(peerId);
+    url.append("&port=").append(port);
+    url.append("&uploaded=").append(uploaded);
+    url.append("&downloaded=").append(downloaded);
+    url.append("&left=").append(left);
+    url.append("&compact=").append(compactMode); // compact = 1 means peer list is in binary format
+    return url.toString();
   }
 
   public static String urlEncodeHash(byte[] hash) {

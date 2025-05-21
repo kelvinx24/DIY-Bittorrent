@@ -12,7 +12,7 @@ public class TorrentFileHandler {
 	private Map<String, Object> fileContentMap;
 	private Map<String, Object> infoMap;
 
-	private byte[] fileHash;
+	private byte[] infoHash;
 	private int fileLength;
 	private String trackerUrl;
 	private int pieceLength;
@@ -59,7 +59,7 @@ public class TorrentFileHandler {
 	private void computeInfoHash(DecoderByteDTO<?> dto) {
 		NumberPair range = dto.getInfoByteRange();
 		byte[] infoBytes = Arrays.copyOfRange(fileContent, range.first(), range.second());
-		this.fileHash = sha1Hash(infoBytes);
+		this.infoHash = sha1Hash(infoBytes);
 	}
 
 	private void extractPieceHashes(DecoderByteDTO<?> dto) {
@@ -130,8 +130,8 @@ public class TorrentFileHandler {
 		return infoMap;
 	}
 
-	public byte[] getFileHash() {
-		return fileHash;
+	public byte[] getInfoHash() {
+		return infoHash;
 	}
 
 	public String getTrackerUrl() {

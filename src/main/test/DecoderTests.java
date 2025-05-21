@@ -22,6 +22,11 @@ public class DecoderTests {
     DecoderDTO<String> result = strDecoder.decode("4:spam", 0);
     assertEquals("spam", result.getValue());
     assertEquals(6, result.getNextIndex());
+
+    // Test 0 length string
+    result = strDecoder.decode("0:", 0);
+    assertEquals("", result.getValue());
+    assertEquals(2, result.getNextIndex());
   }
 
   @Test
@@ -128,28 +133,45 @@ public class DecoderTests {
   }
 
   @Test
-  public void testByteArrayDecoding() {
+  public void testByteArrayNumberDecoding() {
     byte[] bencodedBytes = "i42e".getBytes();
     DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
     assertEquals(42, result.getDecoderDTO().getValue());
     assertEquals(4, result.getNextIndex());
+  }
 
-    bencodedBytes = "4:spam".getBytes();
-    result = dispatcher.decode(bencodedBytes, 0);
+  @Test
+  public void testByteArrayStringDecoding() {
+    byte[] bencodedBytes = "4:spam".getBytes();
+    DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
     assertEquals("spam", result.getDecoderDTO().getValue());
     assertEquals(6, result.getNextIndex());
 
-    bencodedBytes = "l4:spam4:eggse".getBytes();
+    // Test 0 length string
+    bencodedBytes = "0:".getBytes();
     result = dispatcher.decode(bencodedBytes, 0);
+    assertEquals("", result.getDecoderDTO().getValue());
+    assertEquals(2, result.getNextIndex());
+  }
+
+  @Test
+  public void testByteArrayListDecoding() {
+    byte[] bencodedBytes = "l4:spam4:eggse".getBytes();
+    DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
     List<?> list = (List<?>) result.getDecoderDTO().getValue();
+
     assertEquals(2, list.size());
     assertEquals("spam", list.get(0));
     assertEquals("eggs", list.get(1));
     assertEquals(14, result.getNextIndex());
+  }
 
-    bencodedBytes = "d3:bar4:spam3:fooi42ee".getBytes();
-    result = dispatcher.decode(bencodedBytes, 0);
+  @Test
+  public void testByteArrayDictionaryDecoding() {
+    byte[] bencodedBytes = "d3:bar4:spam3:fooi42ee".getBytes();
+    DecoderByteDTO<?> result = dispatcher.decode(bencodedBytes, 0);
     Map<?, ?> dict = (Map<?, ?>) result.getDecoderDTO().getValue();
+
     assertEquals(2, dict.size());
     assertEquals("spam", dict.get("bar"));
     assertEquals(42, dict.get("foo"));
@@ -166,7 +188,6 @@ public class DecoderTests {
 
     assertEquals(10, dict2.get("num"));
     assertEquals(input.length(), result.getNextIndex());
-
   }
 
   @Test
