@@ -22,10 +22,32 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 public class PeerSessionTests {
+  private PeerSession peerSession;
+  private MockTorrentFileHandler torrentFileHandler;
+  private MockSocket mockSocket;
+  private MockInputStream mockInputStream;
+  private OutputStream mockOutputStream;
+
+  @BeforeEach
+  public void setUp() {
+    torrentFileHandler = new MockTorrentFileHandler();
+    mockInputStream = new MockInputStream();
+    mockOutputStream = mock(OutputStream.class);
+    mockSocket = new MockSocket(mockInputStream, mockOutputStream);
+    peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
+        torrentFileHandler.getInfoHash(), mockSocket);
+  }
+
+  @AfterEach
+  public void tearDown() {
+    mockInputStream.reset();
+  }
 
   @Test
   public void testInvalidInitialization() {
@@ -75,25 +97,22 @@ public class PeerSessionTests {
 
   @Test
   public void testValidInitialization() {
-    // Initialize the PeerRequester with dummy values
     MockTorrentFileHandler tfh = new MockTorrentFileHandler();
     PeerSession peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
         tfh.getInfoHash());
     assertEquals("localhost", peerSession.getIpAddress());
     assertEquals(6881, peerSession.getPort());
     assertEquals("01234567890123456789", peerSession.getPeerId());
-    assertEquals(false, peerSession.isInProgress());
+    assertEquals(PeerSession.SessionState.UNINITIALIZED, peerSession.getSessionState());
 
 
   }
 
   @Test
   public void testPeerHandshake() throws IOException {
-    // Initialize the PeerRequester with dummy values
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
 
     // Mock the response from the peer
-    byte[] mockResponse = createHandshakeResponse(tfh.getInfoHash());
+    byte[] mockResponse = createHandshakeResponse(torrentFileHandler.getInfoHash());
 
     // Mock the socket
     MockInputStream mockInputStream = new MockInputStream(Arrays.asList(mockResponse));
@@ -101,28 +120,19 @@ public class PeerSessionTests {
     MockSocket mockSocket = new MockSocket(mockInputStream, mockOutputStream);
 
     PeerSession peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash(), mockSocket);
+        torrentFileHandler.getInfoHash(), mockSocket);
     byte[] response = peerSession.peerHandshake();
     assertEquals("01234567890123456789", peerSession.getSessionPeerId());
     assertEquals("BitTorrent protocol", new String(response, 1, 19));
     assertEquals("01234567890123456789", new String(response, 48, 20));
-    assertArrayEquals(tfh.getInfoHash(), Arrays.copyOfRange(response, 28, 48));
+    assertArrayEquals(torrentFileHandler.getInfoHash(), Arrays.copyOfRange(response, 28, 48));
     assertArrayEquals(mockResponse, response);
 
+    assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
   @Test
   public void testBadHandshake() throws IOException {
-    // Initialize the PeerRequester with dummy values
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
-
-    // Mock the socket
-    MockInputStream badMockInputStream = new MockInputStream();
-    OutputStream mockOutputStream = mock(OutputStream.class);
-    MockSocket badMockSocket = new MockSocket(badMockInputStream, mockOutputStream);
-
-    PeerSession peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash(), badMockSocket);
 
     Exception ex = assertThrows(IOException.class,
         peerSession::peerHandshake);
@@ -132,13 +142,10 @@ public class PeerSessionTests {
     byte[] badMockResponse = new byte[68];
     badMockResponse[0] = 19; // Protocol length
     System.arraycopy("BadTorrent protocol".getBytes(), 0, badMockResponse, 1, 19);
-    System.arraycopy(tfh.getInfoHash(), 0, badMockResponse, 28, 20);
+    System.arraycopy(torrentFileHandler.getInfoHash(), 0, badMockResponse, 28, 20);
     System.arraycopy("01234567890123456789".getBytes(), 0, badMockResponse, 48, 20);
-    MockInputStream badMockInputStream2 = new MockInputStream(Arrays.asList(badMockResponse));
-    MockSocket badMockSocket2 = new MockSocket(badMockInputStream2, mockOutputStream);
+    mockInputStream.setReadResponses(Arrays.asList(badMockResponse));
 
-    peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash(), badMockSocket2);
     ex = assertThrows(IOException.class,
         peerSession::peerHandshake);
     assertTrue(ex.getMessage().contains("Invalid response from peer"));
@@ -153,96 +160,78 @@ public class PeerSessionTests {
     MockSocket badMockSocket3 = new MockSocket(badMockInputStream3, mockOutputStream);
 
     peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash(), badMockSocket3);
+        torrentFileHandler.getInfoHash(), badMockSocket3);
     ex = assertThrows(IOException.class,
         peerSession::peerHandshake);
     assertTrue(ex.getMessage().contains("Info hash mismatch"));
+
+    assertEquals(PeerSession.SessionState.UNINITIALIZED, peerSession.getSessionState());
   }
 
-  @Test
-  public void testEstablishConnection() {
-    // Initialize the PeerRequester with dummy values
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
-    PeerSession peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash());
-  }
 
   @Test
   public void testEstablishInterested() throws IOException {
     // Initialize the PeerRequester with dummy values
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
 
     List<byte[]> responses = new ArrayList<>();
-    responses.add(createHandshakeResponse(tfh.getInfoHash()));
+    responses.add(createHandshakeResponse(torrentFileHandler.getInfoHash()));
     responses.add(createBitfieldResponse());
     responses.add(createUnchokeResponse());
-    MockInputStream mockInputStream = new MockInputStream(responses);
-
-
-    OutputStream mockOutputStream = mock(OutputStream.class);
-    MockSocket mockSocket = new MockSocket(mockInputStream, mockOutputStream);
-
+    mockInputStream.setReadResponses(responses);
 
     PeerSession peerSession = new PeerSession("localhost", 6881, "01234567890123456789",
-        tfh.getInfoHash(), mockSocket);
+        torrentFileHandler.getInfoHash(), mockSocket);
     boolean success = peerSession.establishInterested();
 
-    assertEquals(true, success);
+    assertTrue(success);
+    assertEquals(PeerSession.SessionState.INTERESTED, peerSession.getSessionState());
   }
 
   @Test
   public void testEstablishInterestedBadBitfield() {
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
     List<byte[]> responses = new ArrayList<>();
-    responses.add(createHandshakeResponse(tfh.getInfoHash()));
+    responses.add(createHandshakeResponse(torrentFileHandler.getInfoHash()));
     responses.add(new byte[0]); // Empty bitfield
+    mockInputStream.setReadResponses(responses);
 
-    MockInputStream mockInputStream = new MockInputStream(responses);
-    OutputStream mockOutputStream = mock(OutputStream.class);
-    MockSocket mockSocket = new MockSocket(mockInputStream, mockOutputStream);
-    PeerSession peerSession = new PeerSession("localhost",
-        6881, "01234567890123456789", tfh.getInfoHash(), mockSocket);
     Exception ex = assertThrows(IOException.class,
         peerSession::establishInterested);
     assertTrue(ex.getMessage().contains("Timeout waiting for BITFIELD message."));
+    assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
   @Test
   public void testEstablishInterestedBadUnchoke() {
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
     List<byte[]> responses = new ArrayList<>();
-    responses.add(createHandshakeResponse(tfh.getInfoHash()));
+    responses.add(createHandshakeResponse(torrentFileHandler.getInfoHash()));
     responses.add(createBitfieldResponse());
     responses.add(new byte[0]); // Empty unchoke
+    mockInputStream.setReadResponses(responses);
 
-    MockInputStream mockInputStream = new MockInputStream(responses);
-    OutputStream mockOutputStream = mock(OutputStream.class);
-    MockSocket mockSocket = new MockSocket(mockInputStream, mockOutputStream);
-    PeerSession peerSession = new PeerSession("localhost",
-        6881, "01234567890123456789", tfh.getInfoHash(), mockSocket);
     Exception ex = assertThrows(IOException.class,
         peerSession::establishInterested);
     assertTrue(ex.getMessage().contains("Timeout waiting for UNCHOKE message."));
+    assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
   @Test
   public void testEstablishInterestedTimeout() throws IOException {
-    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
     List<byte[]> responses = new ArrayList<>();
-    responses.add(createHandshakeResponse(tfh.getInfoHash()));
+    responses.add(createHandshakeResponse(torrentFileHandler.getInfoHash()));
     // No bitfield response, simulating a timeout
 
     MockTimeoutInputStream mockInputStream = new MockTimeoutInputStream(responses,1100);
     OutputStream mockOutputStream = mock(OutputStream.class);
     MockSocket mockSocket = new MockSocket(mockInputStream, mockOutputStream);
     PeerSession peerSession = new PeerSession("localhost",
-        6881, "01234567890123456789", tfh.getInfoHash(), mockSocket);
+        6881, "01234567890123456789", torrentFileHandler.getInfoHash(), mockSocket);
 
     peerSession.peerHandshake();
     mockInputStream.setTimeoutActivated(true); // Simulate timeout
     Exception ex = assertThrows(IOException.class,
         peerSession::establishInterested);
     assertTrue(ex.getMessage().contains("Timeout waiting for BITFIELD message."));
+    assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
   @Test
@@ -280,15 +269,17 @@ public class PeerSessionTests {
       responses.add(fullMessage.array());
     }
 
-    MockInputStream mockIn = new MockInputStream(responses);
+    mockInputStream.setReadResponses(responses);
     ByteArrayOutputStream mockOut = new ByteArrayOutputStream();
 
     PeerSession downloader = new PeerSession("localhost", 6881, "01234567890123456789",
-        expectedHash, new MockSocket(mockIn, mockOut));
+        expectedHash, new MockSocket(mockInputStream, mockOut));
 
     byte[] result = downloader.downloadPiece(pieceIndex, pieceLength, expectedHash, fileLength);
 
     assertArrayEquals(expectedData, result);
+
+    assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
   @Test
@@ -321,6 +312,8 @@ public class PeerSessionTests {
     Exception ex = assertThrows(IOException.class,
         () -> downloader.downloadPiece(pieceIndex, pieceLength, expectedHash, fileLength));
     assertTrue(ex.getMessage().contains("Timed out while downloading piece"));
+
+    assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
   @Test
@@ -358,15 +351,17 @@ public class PeerSessionTests {
       responses.add(fullMessage.array());
     }
 
-    MockInputStream mockIn = new MockInputStream(responses);
+    mockInputStream.setReadResponses(responses);
     ByteArrayOutputStream mockOut = new ByteArrayOutputStream();
 
     PeerSession downloader = new PeerSession("localhost", 6881, "01234567890123456789",
-        expectedHash, new MockSocket(mockIn, mockOut));
+        expectedHash, new MockSocket(mockInputStream, mockOut));
 
     Exception ex = assertThrows(PieceDownloadException.class,
         () -> downloader.downloadPiece(pieceIndex, pieceLength, new byte[20], fileLength));
     assertTrue(ex.getMessage().contains("Piece hash mismatch"));
+
+    assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
   @Test
@@ -404,15 +399,17 @@ public class PeerSessionTests {
       responses.add(fullMessage.array());
     }
 
-    MockInputStream mockIn = new MockInputStream(responses);
+    mockInputStream.setReadResponses(responses);
     ByteArrayOutputStream mockOut = new ByteArrayOutputStream();
 
     PeerSession downloader = new PeerSession("localhost", 6881, "01234567890123456789",
-        expectedHash, new MockSocket(mockIn, mockOut));
+        expectedHash, new MockSocket(mockInputStream, mockOut));
 
     Exception ex = assertThrows(PieceDownloadException.class,
         () -> downloader.downloadPiece(-1, pieceLength, expectedHash, fileLength));
     assertTrue(ex.getMessage().contains("Invalid piece index or offset received"));
+
+    assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
 
@@ -451,15 +448,41 @@ public class PeerSessionTests {
       responses.add(fullMessage.array());
     }
 
-    MockInputStream mockIn = new MockInputStream(responses);
+    mockInputStream.setReadResponses(responses);
     ByteArrayOutputStream mockOut = new ByteArrayOutputStream();
 
     PeerSession downloader = new PeerSession("localhost", 6881, "01234567890123456789",
-        expectedHash, new MockSocket(mockIn, mockOut));
+        expectedHash, new MockSocket(mockInputStream, mockOut));
 
     Exception ex = assertThrows(PieceDownloadException.class,
         () -> downloader.downloadPiece(pieceIndex, pieceLength, expectedHash, fileLength));
     assertTrue(ex.getMessage().contains("Invalid piece index or offset received"));
+
+    assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
+  }
+
+  @Test
+  public void testCloseConnection() throws IOException {
+
+    // Close the connection
+    peerSession.closeConnection();
+
+    // Verify that the socket is closed
+    assertTrue(mockSocket.isClosed());
+    assertEquals(PeerSession.SessionState.UNINITIALIZED, peerSession.getSessionState());
+  }
+
+  @Test
+  public void testCloseConnectionTwice() throws IOException {
+    // Close the connection once
+    peerSession.closeConnection();
+
+    // Close the connection again
+    peerSession.closeConnection();
+
+    // Verify that the socket is still closed and state is unchanged
+    assertTrue(mockSocket.isClosed());
+    assertEquals(PeerSession.SessionState.UNINITIALIZED, peerSession.getSessionState());
   }
 
 

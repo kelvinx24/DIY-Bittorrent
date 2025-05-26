@@ -7,6 +7,8 @@ public class MockSocket extends Socket {
   private InputStream mockInputStream;
   private OutputStream mockOutputStream;
 
+  private boolean isClosed;
+
   public MockSocket() {
     super();
   }
@@ -15,6 +17,7 @@ public class MockSocket extends Socket {
     super();
     this.mockInputStream = inputStream;
     this.mockOutputStream = outputStream;
+    this.isClosed = false;
   }
 
   @Override
@@ -25,6 +28,12 @@ public class MockSocket extends Socket {
   @Override
   public void close() {
     // Mock behavior: do nothing or simulate a successful close
+    this.isClosed = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return isClosed;
   }
 
   @Override

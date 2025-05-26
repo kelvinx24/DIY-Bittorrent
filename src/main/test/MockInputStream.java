@@ -14,11 +14,8 @@ public class MockInputStream extends InputStream {
     this.currentIndex = 0;
     this.concatenatedBytes = new byte[0];
 
-    for (byte[] bytes : readResponses) {
-      byte[] newConcatenatedBytes = new byte[concatenatedBytes.length + bytes.length];
-      System.arraycopy(concatenatedBytes, 0, newConcatenatedBytes, 0, concatenatedBytes.length);
-      System.arraycopy(bytes, 0, newConcatenatedBytes, concatenatedBytes.length, bytes.length);
-      concatenatedBytes = newConcatenatedBytes;
+    if (readResponses != null && !readResponses.isEmpty()) {
+      this.concatenatedBytes = createConcatenatedBytes(readResponses);
     }
   }
 
@@ -66,5 +63,31 @@ public class MockInputStream extends InputStream {
     currentIndex += bytesToRead;
 
     return bytesToRead;
+  }
+
+  private byte[] createConcatenatedBytes(List<byte[]> readResponses) {
+    int totalLength = 0;
+    for (byte[] bytes : readResponses) {
+      totalLength += bytes.length;
+    }
+
+    byte[] concatenated = new byte[totalLength];
+    int currentPosition = 0;
+
+    for (byte[] bytes : readResponses) {
+      System.arraycopy(bytes, 0, concatenated, currentPosition, bytes.length);
+      currentPosition += bytes.length;
+    }
+
+    return concatenated;
+  }
+
+  public void setReadResponses(List<byte[]> readResponses) {
+    this.concatenatedBytes = createConcatenatedBytes(readResponses);
+    this.currentIndex = 0;
+  }
+
+  public void reset() {
+    this.currentIndex = 0;
   }
 }

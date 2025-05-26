@@ -8,6 +8,15 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class PeerSession {
+  public enum SessionState {
+    UNINITIALIZED,
+    HANDSHAKE,
+    INTERESTED,
+    IDLE,
+    DOWNLOADING,
+    COMPLETED
+  }
+
   private static final int HANDSHAKE_SIZE = 68;
   private static final int HANDSHAKE_PROTOCOL_SIZE = 19;
   private static final String HANDSHAKE_PROTOCOL = "BitTorrent protocol";
@@ -31,8 +40,7 @@ public class PeerSession {
   private int currentPieceLength;
   private int currentPieceOffset;
 
-  private boolean inProgress;
-  private boolean firstTimeHandshake = true;
+  private SessionState sessionState;
 
   private Socket peerSocket;
   private OutputStream outputStream;
@@ -73,7 +81,8 @@ public class PeerSession {
     this.currentPieceIndex = 0;
     this.currentPieceLength = 0;
     this.currentPieceOffset = 0;
-    this.inProgress = false;
+
+    this.sessionState = SessionState.UNINITIALIZED;
 
     this.peerSocket = peerSocket;
   }
@@ -92,6 +101,7 @@ public class PeerSession {
     int bytesRead = inputStream.read(response);
 
     if (bytesRead == -1) {
+      this.closeConnection();
       throw new IOException("No response from peer");
     }
 
@@ -99,15 +109,18 @@ public class PeerSession {
     // Check if the response is valid
     String protocol = new String(response, 1, HANDSHAKE_PROTOCOL_SIZE);
     if (!"BitTorrent protocol".equals(protocol)) {
+      this.closeConnection();
       throw new IOException("Invalid response from peer. Response: " + Arrays.toString(response));
     }
     byte[] infoHash = Arrays.copyOfRange(response, 28, 48);
     byte[] peerId = Arrays.copyOfRange(response, 48, 68);
     if (!Arrays.equals(this.infoHash, infoHash)) {
+      this.closeConnection();
       throw new IOException("Info hash mismatch");
     }
 
     this.sessionPeerId = new String(peerId);
+    this.sessionState = SessionState.HANDSHAKE;
 
     return response;
   }
@@ -167,7 +180,7 @@ public class PeerSession {
       }
     }
 
-    firstTimeHandshake = false;
+    this.sessionState = SessionState.INTERESTED;
     return true;
   }
 
@@ -204,9 +217,11 @@ public class PeerSession {
 
   public byte[] downloadPiece(int pieceIndex, int pieceLength, byte[] expectedHash, int fileLength)
       throws IOException, PieceDownloadException {
+
+    setPieceState(pieceIndex, pieceLength, 0);
     int remainingBytes = fileLength - pieceIndex * pieceLength;
 
-    if (firstTimeHandshake) {
+    if (this.sessionState.ordinal() < SessionState.INTERESTED.ordinal()) {
       establishInterested(); // performs BITFIELD/UNCHOKE negotiation
     }
 
@@ -225,67 +240,91 @@ public class PeerSession {
     int totalReceived = 0;
     long startTime = System.currentTimeMillis();
 
-    while (totalReceived < pieceLength) {
-      this.inProgress = true;
+    this.sessionState = SessionState.DOWNLOADING;
+    try {
+      while (totalReceived < pieceLength) {
 
-      // Check for timeout
-      if (System.currentTimeMillis() - startTime > DOWNLOAD_TIMEOUT_MS) {
-        this.inProgress = false;
-        throw new IOException("Timed out while downloading piece " + pieceIndex);
+        // Check for timeout
+        if (System.currentTimeMillis() - startTime > DOWNLOAD_TIMEOUT_MS) {
+          throw new IOException("Timed out while downloading piece " + pieceIndex);
+        }
+
+        PeerMessage msg = readMessage(inputStream);
+        if (msg == null) {
+          continue; // Ignore keep-alive or malformed messages
+        }
+
+        if (msg.id != 7) {
+          continue; // Not a piece message
+        }
+
+        ByteBuffer payload = ByteBuffer.wrap(msg.payload);
+        int receivedIndex = payload.getInt();
+        int begin = payload.getInt();
+
+        if (receivedIndex != pieceIndex || begin < 0 || begin >= pieceLength) {
+          throw new PieceDownloadException("Invalid piece index or offset received");
+        }
+
+        byte[] block = new byte[msg.payload.length - 8];
+        payload.get(block);
+
+        if (begin + block.length > pieceLength) {
+          throw new PieceDownloadException("Block exceeds piece boundaries");
+        }
+
+        System.arraycopy(block, 0, pieceData, begin, block.length);
+        totalReceived += block.length;
+        currentPieceOffset = begin + block.length;
+
+        // Reset timeout on successful block
+        startTime = System.currentTimeMillis();
       }
 
-      PeerMessage msg = readMessage(inputStream);
-      if (msg == null) {
-        continue; // Ignore keep-alive or malformed messages
+      // Validate SHA-1 hash of the downloaded piece
+      byte[] actualHash = TorrentFileHandler.sha1Hash(pieceData);
+      if (!Arrays.equals(actualHash, expectedHash)) {
+        throw new PieceDownloadException("Piece hash mismatch");
       }
 
-      if (msg.id != 7) {
-        continue; // Not a piece message
-      }
-
-      ByteBuffer payload = ByteBuffer.wrap(msg.payload);
-      int receivedIndex = payload.getInt();
-      int begin = payload.getInt();
-
-      if (receivedIndex != pieceIndex || begin < 0 || begin >= pieceLength) {
-        this.inProgress = false;
-        throw new PieceDownloadException("Invalid piece index or offset received");
-      }
-
-      byte[] block = new byte[msg.payload.length - 8];
-      payload.get(block);
-
-      if (begin + block.length > pieceLength) {
-        this.inProgress = false;
-        throw new PieceDownloadException("Block exceeds piece boundaries");
-      }
-
-      System.arraycopy(block, 0, pieceData, begin, block.length);
-      totalReceived += block.length;
-
-      // Reset timeout on successful block
-      startTime = System.currentTimeMillis();
+      return pieceData;
+    } finally {
+      // Ensure we reset the piece state even if an exception occurs
+      resetPieceState();
+      this.sessionState = SessionState.IDLE;
     }
 
-    // Validate SHA-1 hash of the downloaded piece
-    byte[] actualHash = TorrentFileHandler.sha1Hash(pieceData);
-    if (!Arrays.equals(actualHash, expectedHash)) {
-      this.inProgress = false;
-      throw new PieceDownloadException("Piece hash mismatch");
-    }
+  }
 
-    this.inProgress = false;
-    return pieceData;
+  private void resetPieceState() {
+    this.currentPieceIndex = 0;
+    this.currentPieceLength = 0;
+    this.currentPieceOffset = 0;
+  }
+
+  private void setPieceState(int pieceIndex, int pieceLength, int pieceOffset) {
+    this.currentPieceIndex = pieceIndex;
+    this.currentPieceLength = pieceLength;
+    this.currentPieceOffset = pieceOffset;
   }
 
 
-  public synchronized void closeConnection() {
-    try {
-      if (peerSocket != null && !peerSocket.isClosed()) {
-        peerSocket.close();
+  public synchronized void closeConnection() throws IOException {
+    if (peerSocket != null && !peerSocket.isClosed()) {
+
+      if (outputStream != null) {
+        outputStream.flush();
+        outputStream.close();
+
       }
-    } catch (Exception e) {
-      e.printStackTrace();
+
+      if (inputStream != null) {
+        inputStream.close();
+      }
+
+      peerSocket.close();
+      this.sessionState = SessionState.UNINITIALIZED;
+
     }
   }
 
@@ -315,8 +354,8 @@ public class PeerSession {
     return currentPieceOffset;
   }
 
-  public boolean isInProgress() {
-    return inProgress;
+  public SessionState getSessionState() {
+    return sessionState;
   }
 
   public String  getSessionPeerId() {
@@ -325,6 +364,27 @@ public class PeerSession {
 
   private static byte[] intToBytes(int val) {
     return ByteBuffer.allocate(4).putInt(val).array();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof PeerSession)) return false;
+    PeerSession that = (PeerSession) o;
+    return port == that.port &&
+           ipAddress.equals(that.ipAddress) &&
+           peerId.equals(that.peerId) &&
+           Arrays.equals(infoHash, that.infoHash);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = ipAddress.hashCode();
+    result = 31 * result + port;
+    result = 31 * result + peerId.hashCode();
+    result = 31 * result + Arrays.hashCode(infoHash);
+    return result;
+
   }
 
 
