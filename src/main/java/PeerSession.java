@@ -4,12 +4,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class PeerSession {
   private static final int HANDSHAKE_SIZE = 68;
   private static final int HANDSHAKE_PROTOCOL_SIZE = 19;
   private static final String HANDSHAKE_PROTOCOL = "BitTorrent protocol";
+  private static final int BITFIELD_RESPONSE_ID = 5;
+  private static final int UNCHOKE_RESPONSE_ID = 1;
+  private static final int INTERESTED_ID = 2;
+  private static final int REQUEST_ID = 6;
+
+  private static final int BLOCK_SIZE = 16384; // 16 KiB block size
+
+  private static final int HANDSHAKE_TIMEOUT_MS = 10_000; // 10 seconds timeout
+  private static final int DOWNLOAD_TIMEOUT_MS = 30_000; // 30 seconds timeout
+
 
   private final String ipAddress;
   private final int port;
@@ -21,12 +32,15 @@ public class PeerSession {
   private int currentPieceOffset;
 
   private boolean inProgress;
+  private boolean firstTimeHandshake = true;
 
   private Socket peerSocket;
   private OutputStream outputStream;
   private InputStream inputStream;
 
   private String sessionPeerId;
+
+  private record PeerMessage(int id, byte[] payload) {}
 
   public PeerSession(String ipAddress, int port, String peerId, byte[] infoHash) {
     this(ipAddress, port, peerId, infoHash, new Socket());
@@ -113,13 +127,157 @@ public class PeerSession {
     return byteArrayStream.toByteArray();
   }
 
-  public synchronized boolean establishInterested() {
-    return false;
+  public boolean establishInterested() throws IOException {
+    if (this.inputStream == null || this.outputStream == null) {
+      peerHandshake();
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    // Wait for BITFIELD message
+    while (true) {
+      if (System.currentTimeMillis() - startTime > HANDSHAKE_TIMEOUT_MS) {
+        throw new IOException("Timeout waiting for BITFIELD message.");
+      }
+
+      PeerMessage message = readMessage(inputStream);
+      if (message == null) continue;
+
+      if (message.id == BITFIELD_RESPONSE_ID) {
+        break;
+      }
+    }
+
+    // Send INTERESTED message
+    sendInterested(outputStream);
+
+    startTime = System.currentTimeMillis(); // reset for unchoke wait
+
+    // Wait for UNCHOKE message
+    while (true) {
+      if (System.currentTimeMillis() - startTime > HANDSHAKE_TIMEOUT_MS) {
+        throw new IOException("Timeout waiting for UNCHOKE message.");
+      }
+
+      PeerMessage message = readMessage(inputStream);
+      if (message == null) continue;
+
+      if (message.id == UNCHOKE_RESPONSE_ID) {
+        break;
+      }
+    }
+
+    firstTimeHandshake = false;
+    return true;
   }
 
-  public synchronized  byte[] downloadPiece(int pieceIndex, int pieceLength, int pieceHash, int fileSize) {
-    return new byte[pieceLength];
+  private void sendInterested(OutputStream out) throws IOException {
+    ByteArrayOutputStream msg = new ByteArrayOutputStream();
+    msg.write(intToBytes(1)); // length
+    msg.write(2);             // ID = interested
+    out.write(msg.toByteArray());
+    out.flush();
   }
+
+  private void sendRequest(OutputStream out, int index, int begin, int length) throws IOException {
+    ByteArrayOutputStream msg = new ByteArrayOutputStream();
+    msg.write(intToBytes(13)); // 1 (ID) + 12 (payload)
+    msg.write(6);              // ID = request
+    msg.write(intToBytes(index));
+    msg.write(intToBytes(begin));
+    msg.write(intToBytes(length));
+    out.write(msg.toByteArray());
+    out.flush();
+  }
+
+  private static PeerMessage readMessage(InputStream in) throws IOException {
+    byte[] lenBytes = in.readNBytes(4);
+    if (lenBytes == null || lenBytes.length != 4) return null;
+
+    int length = ByteBuffer.wrap(lenBytes).getInt();
+    if (length == 0) return null; // keep-alive
+
+    int id = in.read();
+    byte[] payload = in.readNBytes(length - 1);
+    return new PeerMessage(id, payload);
+  }
+
+  public byte[] downloadPiece(int pieceIndex, int pieceLength, byte[] expectedHash, int fileLength)
+      throws IOException, PieceDownloadException {
+    int remainingBytes = fileLength - pieceIndex * pieceLength;
+
+    if (firstTimeHandshake) {
+      establishInterested(); // performs BITFIELD/UNCHOKE negotiation
+    }
+
+    // Adjust the final piece size if it's shorter
+    if (remainingBytes < pieceLength) {
+      pieceLength = Math.max(0, remainingBytes);
+    }
+
+    // Request all blocks in this piece
+    for (int offset = 0; offset < pieceLength; offset += BLOCK_SIZE) {
+      int blockLength = Math.min(BLOCK_SIZE, pieceLength - offset);
+      sendRequest(outputStream, pieceIndex, offset, blockLength);
+    }
+
+    byte[] pieceData = new byte[pieceLength];
+    int totalReceived = 0;
+    long startTime = System.currentTimeMillis();
+
+    while (totalReceived < pieceLength) {
+      this.inProgress = true;
+
+      // Check for timeout
+      if (System.currentTimeMillis() - startTime > DOWNLOAD_TIMEOUT_MS) {
+        this.inProgress = false;
+        throw new IOException("Timed out while downloading piece " + pieceIndex);
+      }
+
+      PeerMessage msg = readMessage(inputStream);
+      if (msg == null) {
+        continue; // Ignore keep-alive or malformed messages
+      }
+
+      if (msg.id != 7) {
+        continue; // Not a piece message
+      }
+
+      ByteBuffer payload = ByteBuffer.wrap(msg.payload);
+      int receivedIndex = payload.getInt();
+      int begin = payload.getInt();
+
+      if (receivedIndex != pieceIndex || begin < 0 || begin >= pieceLength) {
+        this.inProgress = false;
+        throw new PieceDownloadException("Invalid piece index or offset received");
+      }
+
+      byte[] block = new byte[msg.payload.length - 8];
+      payload.get(block);
+
+      if (begin + block.length > pieceLength) {
+        this.inProgress = false;
+        throw new PieceDownloadException("Block exceeds piece boundaries");
+      }
+
+      System.arraycopy(block, 0, pieceData, begin, block.length);
+      totalReceived += block.length;
+
+      // Reset timeout on successful block
+      startTime = System.currentTimeMillis();
+    }
+
+    // Validate SHA-1 hash of the downloaded piece
+    byte[] actualHash = TorrentFileHandler.sha1Hash(pieceData);
+    if (!Arrays.equals(actualHash, expectedHash)) {
+      this.inProgress = false;
+      throw new PieceDownloadException("Piece hash mismatch");
+    }
+
+    this.inProgress = false;
+    return pieceData;
+  }
+
 
   public synchronized void closeConnection() {
     try {
@@ -164,5 +322,10 @@ public class PeerSession {
   public String  getSessionPeerId() {
     return sessionPeerId;
   }
+
+  private static byte[] intToBytes(int val) {
+    return ByteBuffer.allocate(4).putInt(val).array();
+  }
+
 
 }
