@@ -19,7 +19,7 @@ public class MockTorrentFileHandler extends TorrentFileHandler {
 
   @Override
   public int getPieceLength() {
-    return 16384; // Example piece length
+    return 16384 * 2; // Example piece length
   }
 
   @Override

@@ -38,52 +38,45 @@ public class TorrentSession {
   private final ConcurrentMap<Integer, PeerSession> pieceDownloaders;
   private final BlockingQueue<Integer> pieceQueue;
 
+  private final TrackerClientFactory trackerClientFactory;
+  private final PeerSessionFactory peerSessionFactory;
+  private final PieceWriter pieceWriter;
+  private final ExecutorService executor;
 
-  public TorrentSession(TorrentFileHandler tfh, Path outputFilePath) {
-    if (tfh == null) {
-      throw new IllegalArgumentException("TorrentFileHandler cannot be null");
+  public TorrentSession(
+      TorrentFileHandler tfh,
+      Path outputFilePath,
+      TrackerClientFactory trackerClientFactory,
+      PeerSessionFactory peerSessionFactory,
+      PieceWriter pieceWriter,
+      RandomIdGenerator idGenerator,
+      ExecutorService executor) {
+
+    if (tfh == null || outputFilePath == null || trackerClientFactory == null
+        || peerSessionFactory == null || pieceWriter == null || idGenerator == null
+        || executor == null) {
+      throw new IllegalArgumentException("Constructor parameters cannot be null");
     }
-    if (outputFilePath == null) {
-      throw new IllegalArgumentException("Output file path cannot be null");
-    }
+
     this.outputFilePath = outputFilePath;
-
-    this.peerId = randomPeerId();
-
-    String trackerUrl = tfh.getTrackerUrl();
+    this.peerId = idGenerator.generate();
+    this.peerSessions = new HashSet<>();
     this.fileSize = tfh.getFileLength();
-    byte[] infoHash = tfh.getInfoHash();
     this.pieceLength = tfh.getPieceLength();
     this.numPieces = (int) Math.ceil((double) fileSize / pieceLength);
     this.pieceHashes = tfh.getHashedPieces();
+    this.peerSessionFactory = peerSessionFactory;
+    this.pieceWriter = pieceWriter;
+    this.executor = executor;
+    this.trackerClientFactory = trackerClientFactory;
+
+    this.trackerClient = trackerClientFactory.create(tfh.getTrackerUrl(), DEFAULT_PORT,
+        this.fileSize, tfh.getInfoHash(), this.peerId);
+
     if (pieceHashes.size() != numPieces) {
-      throw new IllegalArgumentException("Number of piece hashes does not match number of pieces");
+      throw new IllegalArgumentException("Mismatch in number of pieces");
     }
 
-    this.trackerClient = new TrackerClient(trackerUrl, DEFAULT_PORT, fileSize, infoHash, peerId);
-    this.peerSessions = new HashSet<>();
-
-    this.pieceStates = new ConcurrentHashMap<>();
-    this.pieceDownloaders = new ConcurrentHashMap<>();
-    this.pieceQueue = new LinkedBlockingDeque<>();
-  }
-
-  public TorrentSession(String trackerUrl, int port, int fileSize, byte[] infoHash, int pieceLength,
-      int numPieces, List<byte[]> pieceHashes, Path outputFilePath) {
-    this.peerId = randomPeerId();
-
-    this.trackerClient = new TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
-    this.peerSessions = new HashSet<>();
-
-    this.fileSize = fileSize;
-    this.pieceLength = pieceLength;
-    this.numPieces = numPieces;
-    if (pieceHashes == null || pieceHashes.size() != numPieces) {
-      throw new IllegalArgumentException("Piece hashes must match number of pieces");
-    }
-    this.pieceHashes = pieceHashes;
-
-    this.outputFilePath = outputFilePath;
     this.pieceStates = new ConcurrentHashMap<>();
     this.pieceDownloaders = new ConcurrentHashMap<>();
     this.pieceQueue = new LinkedBlockingDeque<>();
@@ -133,7 +126,8 @@ public class TorrentSession {
       for (PeerSession peer : peerSessions) {
         if (peer.getSessionState() == PeerSession.SessionState.IDLE) {
           try {
-            byte[] pieceData = peer.downloadPiece(pieceIndex, pieceLength, pieceHashes.get(pieceIndex), fileSize);
+            byte[] pieceData = peer.downloadPiece(pieceIndex, pieceLength,
+                pieceHashes.get(pieceIndex), fileSize);
             if (pieceData != null && pieceData.length == pieceLength) {
               System.out.println("Downloaded piece " + pieceIndex + " from " + peer.getIpAddress());
               return pieceData;
@@ -141,7 +135,9 @@ public class TorrentSession {
               throw new IOException("Invalid piece data received");
             }
           } catch (Exception e) {
-            System.err.println("Failed to download piece " + pieceIndex + " from " + peer.getIpAddress() + ": " + e.getMessage());
+            System.err.println(
+                "Failed to download piece " + pieceIndex + " from " + peer.getIpAddress() + ": "
+                    + e.getMessage());
           }
         }
       }
@@ -167,7 +163,8 @@ public class TorrentSession {
     ExecutorService executor = Executors.newFixedThreadPool(peerSessions.size());
     for (PeerSession peerSession : peerSessions) {
       executor.submit(() -> {
-        while (!pieceQueue.isEmpty() && !peerSession.getSessionState().equals(PeerSession.SessionState.DOWNLOADING)) {
+        while (!pieceQueue.isEmpty() && !peerSession.getSessionState()
+            .equals(PeerSession.SessionState.DOWNLOADING)) {
           Integer pieceIndex = pieceQueue.poll();
           if (pieceIndex == null) {
             break;
@@ -178,19 +175,23 @@ public class TorrentSession {
             if (state == PieceState.NOT_DOWNLOADED) {
               pieceStates.put(pieceIndex, PieceState.DOWNLOADING);
               pieceDownloaders.put(pieceIndex, peerSession);
-              byte[] pieceData = peerSession.downloadPiece(pieceIndex, pieceLength, pieceHashes.get(pieceIndex), fileSize);
+              byte[] pieceData = peerSession.downloadPiece(pieceIndex, pieceLength,
+                  pieceHashes.get(pieceIndex), fileSize);
 
               if (pieceData != null && pieceData.length == pieceLength) {
                 writePieceToFile(outputFilePath.toString(), pieceData, pieceIndex * pieceLength);
                 pieceStates.put(pieceIndex, PieceState.DOWNLOADED);
                 pieceDownloaders.remove(pieceIndex);
-                System.out.println("Downloaded piece " + pieceIndex + " from " + peerSession.getIpAddress());
+                System.out.println(
+                    "Downloaded piece " + pieceIndex + " from " + peerSession.getIpAddress());
               } else {
                 throw new IOException("Invalid piece data");
               }
             }
           } catch (Exception e) {
-            System.err.println("Exception downloading piece " + pieceIndex + " from " + peerSession.getIpAddress() + ": " + e.getMessage());
+            System.err.println(
+                "Exception downloading piece " + pieceIndex + " from " + peerSession.getIpAddress()
+                    + ": " + e.getMessage());
             pieceDownloaders.remove(pieceIndex);
             pieceStates.put(pieceIndex, PieceState.NOT_DOWNLOADED);
             pieceQueue.add(pieceIndex); // Re-add the piece to the queue for retry
@@ -200,10 +201,10 @@ public class TorrentSession {
     }
 
 
-
   }
 
-  private static void writePieceToFile(String filePath, byte[] data, int offset) throws IOException {
+  private static void writePieceToFile(String filePath, byte[] data, int offset)
+      throws IOException {
     try (RandomAccessFile raf = new RandomAccessFile(filePath, "rw")) {
       raf.seek(offset);
       raf.write(data);
@@ -219,7 +220,8 @@ public class TorrentSession {
         peerSessions.add(peerSession);
       } catch (IOException e) {
         System.err.println(
-            "Failed to connect to peer: " + peerSession.getIpAddress() + ":" + peerSession.getPort());
+            "Failed to connect to peer: " + peerSession.getIpAddress() + ":"
+                + peerSession.getPort());
         e.printStackTrace();
       }
     }
@@ -231,7 +233,8 @@ public class TorrentSession {
       try {
         peerSession.closeConnection();
       } catch (IOException e) {
-        System.err.println("Failed to close connection to peer: " + peerSession.getIpAddress() + ":" + peerSession.getPort());
+        System.err.println("Failed to close connection to peer: " + peerSession.getIpAddress() + ":"
+            + peerSession.getPort());
         e.printStackTrace();
       }
     }
