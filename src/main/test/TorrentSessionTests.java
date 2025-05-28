@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import java.io.OutputStream;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -155,6 +156,45 @@ public class TorrentSessionTests {
     assertEquals("Constructor parameters cannot be null", exception.getMessage());
   }
 
+  @Test
+  public void testValidFindRemotePeers() {
+    TorrentSession ts = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        mockTrackerClientFactory,
+        mockPeerSessionFactory,
+        mockPieceWriter,
+        mockIdGenerator,
+        Executors.newSingleThreadExecutor()
+    );
+
+    // expected
+    List<PeerSession> peers = ts.findRemotePeers();
+    assertNotNull(peers);
+    assertEquals(1, peers.size());
+    PeerSession peer = peers.get(0);
+    assertNotNull(peer);
+    assertEquals(MockTrackerClient.expectedPort(), peer.getPort());
+    assertEquals(MockTrackerClient.expectedAddress(), peer.getIpAddress());
+  }
+
+  @Test
+  public void testInvalidFindRemotePeers() {
+    TorrentSession ts = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        new MockTrackerClientFactory(true),
+        mockPeerSessionFactory,
+        mockPieceWriter,
+        mockIdGenerator,
+        Executors.newSingleThreadExecutor()
+    );
+
+
+    List<PeerSession> peers = ts.findRemotePeers();
+    assertNotNull(peers);
+    assertTrue(peers.isEmpty(), "Expected no peers to be found with default tracker client");
+  }
 
 
 }

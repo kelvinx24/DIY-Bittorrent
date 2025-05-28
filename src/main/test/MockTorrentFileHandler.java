@@ -5,6 +5,10 @@ public class MockTorrentFileHandler extends TorrentFileHandler {
     super("sample.torrent"); // or dummy path if needed
   }
 
+  public MockTorrentFileHandler(String filePath) {
+    super(filePath);
+  }
+
   @Override
   public byte[] getInfoHash() {
     return new byte[] {

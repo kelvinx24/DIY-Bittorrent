@@ -82,16 +82,6 @@ public class TorrentSession {
     this.pieceQueue = new LinkedBlockingDeque<>();
   }
 
-  private String randomPeerId() {
-    int peerIdLength = 20;
-    StringBuilder peerIdBuilder = new StringBuilder(peerIdLength);
-    for (int i = 0; i < peerIdLength; i++) {
-      char randomChar = (char) ('a' + Math.random() * 26);
-      peerIdBuilder.append(randomChar);
-    }
-    return peerIdBuilder.toString();
-  }
-
   public List<PeerSession> findRemotePeers() {
     List<PeerSession> unconnectedPeers = new ArrayList<>();
 
