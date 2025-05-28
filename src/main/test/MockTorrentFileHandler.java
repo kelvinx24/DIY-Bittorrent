@@ -1,12 +1,30 @@
 import java.util.List;
 
 public class MockTorrentFileHandler extends TorrentFileHandler {
+
+  private List<byte[]> pieceHashes;
+
   public MockTorrentFileHandler() {
     super("sample.torrent"); // or dummy path if needed
+    this.pieceHashes = List.of(
+        new byte[] { /* Example hash for piece 0 */ },
+        new byte[] { /* Example hash for piece 1 */ },
+        new byte[] { /* Example hash for piece 2 */ }
+    );
   }
 
   public MockTorrentFileHandler(String filePath) {
     super(filePath);
+    this.pieceHashes = List.of(
+        new byte[] { /* Example hash for piece 0 */ },
+        new byte[] { /* Example hash for piece 1 */ },
+        new byte[] { /* Example hash for piece 2 */ }
+    );
+  }
+
+  public MockTorrentFileHandler(String filePath, List<byte[]> pieceHashes) {
+    super(filePath);
+    this.pieceHashes = pieceHashes;
   }
 
   @Override
@@ -28,16 +46,16 @@ public class MockTorrentFileHandler extends TorrentFileHandler {
 
   @Override
   public int getFileLength() {
-    return 92063; // Example file length
+    return getPieceLength() * pieceHashes.size(); // Example total file length
   }
 
   @Override
   public List<byte[]> getHashedPieces() {
-    return List.of(
-        new byte[] { /* Example hash for piece 0 */ },
-        new byte[] { /* Example hash for piece 1 */ },
-        new byte[] { /* Example hash for piece 2 */ }
-    );
+    return pieceHashes;
+  }
+
+  public void setPieceHashes(List<byte[]> pieceHashes) {
+    this.pieceHashes = pieceHashes;
   }
 
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,8 @@ public class TorrentSession {
   private final TrackerClientFactory trackerClientFactory;
   private final PeerSessionFactory peerSessionFactory;
   private final PieceWriter pieceWriter;
+  // TOOD: Replace with factory pattern such that it can be mocked in tests
+  // whilst still allowing for changing thread pool size
   private final ExecutorService executor;
 
   public TorrentSession(
@@ -90,7 +93,7 @@ public class TorrentSession {
       for (Entry<String, Integer> entry : tr.getPeersMap().entrySet()) {
         String ip = entry.getKey();
         int port = entry.getValue();
-        PeerSession peerSession = new PeerSession(ip, port, peerId, trackerClient.getInfoHash());
+        PeerSession peerSession = peerSessionFactory.create(ip, port, peerId, trackerClient.getInfoHash());
         unconnectedPeers.add(peerSession);
       }
 
@@ -100,7 +103,7 @@ public class TorrentSession {
     }
   }
 
-  public byte[] downloadPiece(int pieceIndex) {
+  public byte[] downloadPiece(int pieceIndex) throws IOException, PieceDownloadException {
     if (pieceIndex < 0 || pieceIndex >= numPieces) {
       throw new IllegalArgumentException("Invalid piece index: " + pieceIndex);
     }
@@ -115,19 +118,16 @@ public class TorrentSession {
     while (true) {
       for (PeerSession peer : peerSessions) {
         if (peer.getSessionState() == PeerSession.SessionState.IDLE) {
-          try {
-            byte[] pieceData = peer.downloadPiece(pieceIndex, pieceLength,
-                pieceHashes.get(pieceIndex), fileSize);
-            if (pieceData != null && pieceData.length == pieceLength) {
-              System.out.println("Downloaded piece " + pieceIndex + " from " + peer.getIpAddress());
-              return pieceData;
-            } else {
-              throw new IOException("Invalid piece data received");
-            }
-          } catch (Exception e) {
-            System.err.println(
-                "Failed to download piece " + pieceIndex + " from " + peer.getIpAddress() + ": "
-                    + e.getMessage());
+          byte[] pieceData = peer.downloadPiece(pieceIndex, pieceLength,
+              pieceHashes.get(pieceIndex), fileSize);
+
+          byte[] expectedHash = pieceHashes.get(pieceIndex);
+
+          if (pieceData != null && Arrays.equals(TorrentFileHandler.sha1Hash(pieceData), expectedHash)) {
+            System.out.println("Downloaded piece " + pieceIndex + " from " + peer.getIpAddress());
+            return pieceData;
+          } else {
+            throw new IOException("Invalid piece data received");
           }
         }
       }
