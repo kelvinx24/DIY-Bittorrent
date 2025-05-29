@@ -18,4 +18,8 @@ public class MockPeerSessionFactory implements PeerSessionFactory {
     return new MockPeerSession(
         ip, port, peerId, infoHash, pieces);
   }
+
+  public void setPieces(List<byte[]> pieces) {
+    this.pieces = pieces;
+  }
 }

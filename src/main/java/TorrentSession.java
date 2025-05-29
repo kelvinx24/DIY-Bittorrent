@@ -15,7 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 public class TorrentSession {
 
@@ -44,7 +46,9 @@ public class TorrentSession {
   private final PieceWriter pieceWriter;
   // TOOD: Replace with factory pattern such that it can be mocked in tests
   // whilst still allowing for changing thread pool size
-  private final ExecutorService executor;
+  private ExecutorService executor;
+
+  private List<Future<?>> downloadFutures = new ArrayList<>();
 
   public TorrentSession(
       TorrentFileHandler tfh,
@@ -56,8 +60,7 @@ public class TorrentSession {
       ExecutorService executor) {
 
     if (tfh == null || outputFilePath == null || trackerClientFactory == null
-        || peerSessionFactory == null || pieceWriter == null || idGenerator == null
-        || executor == null) {
+        || peerSessionFactory == null || pieceWriter == null || idGenerator == null) {
       throw new IllegalArgumentException("Constructor parameters cannot be null");
     }
 
@@ -83,6 +86,16 @@ public class TorrentSession {
     this.pieceStates = new ConcurrentHashMap<>();
     this.pieceDownloaders = new ConcurrentHashMap<>();
     this.pieceQueue = new LinkedBlockingDeque<>();
+  }
+
+  public TorrentSession (
+      TorrentFileHandler tfh,
+      Path outputFilePath,
+      TrackerClientFactory trackerClientFactory,
+      PeerSessionFactory peerSessionFactory,
+      PieceWriter pieceWriter,
+      RandomIdGenerator idGenerator) {
+    this(tfh, outputFilePath, trackerClientFactory, peerSessionFactory, pieceWriter, idGenerator, null);
   }
 
   public List<PeerSession> findRemotePeers() {
@@ -135,70 +148,141 @@ public class TorrentSession {
 
   }
 
-  public void downloadAll() throws FileNotFoundException, IOException {
+  public void downloadAll() throws IOException {
     initializePeerSessions();
     if (peerSessions.isEmpty()) {
       throw new IllegalStateException("No peers available for download");
     }
 
+    initializePieceQueue();
+    initializeOutputFile();
+
+    this.executor = (this.executor != null)
+        ? this.executor
+        : Executors.newFixedThreadPool(peerSessions.size());
+
+    try {
+      submitDownloadTasks(executor);
+      awaitCompletion(executor);
+    } finally {
+      shutdownExecutor(executor);
+    }
+  }
+
+  private void initializePieceQueue() {
     for (int i = 0; i < numPieces; i++) {
       pieceStates.put(i, PieceState.NOT_DOWNLOADED);
       pieceQueue.add(i);
     }
+  }
 
+  private void awaitCompletion(ExecutorService executor) throws IOException {
+    executor.shutdown();
+    try {
+      // Wait for all tasks to complete with a reasonable timeout
+      if (!executor.awaitTermination(300, TimeUnit.SECONDS)) {
+        throw new IOException("Download timeout - not all pieces downloaded within time limit");
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Download interrupted", e);
+    }
+  }
+
+  private void shutdownExecutor(ExecutorService executor) {
+    if (!executor.isShutdown()) {
+      executor.shutdown();
+    }
+
+    try {
+      if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+        executor.shutdownNow();
+        if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+          System.err.println("ExecutorService did not terminate cleanly");
+        }
+      }
+    } catch (InterruptedException e) {
+      executor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+  }
+
+
+  private void initializeOutputFile() throws FileNotFoundException, IOException {
     try (RandomAccessFile raf = new RandomAccessFile(outputFilePath.toFile(), "rw")) {
       raf.setLength(fileSize);
     }
-
-    ExecutorService executor = Executors.newFixedThreadPool(peerSessions.size());
-    for (PeerSession peerSession : peerSessions) {
-      executor.submit(() -> {
-        while (!pieceQueue.isEmpty() && !peerSession.getSessionState()
-            .equals(PeerSession.SessionState.DOWNLOADING)) {
-          Integer pieceIndex = pieceQueue.poll();
-          if (pieceIndex == null) {
-            break;
-          }
-
-          try {
-            PieceState state = pieceStates.get(pieceIndex);
-            if (state == PieceState.NOT_DOWNLOADED) {
-              pieceStates.put(pieceIndex, PieceState.DOWNLOADING);
-              pieceDownloaders.put(pieceIndex, peerSession);
-              byte[] pieceData = peerSession.downloadPiece(pieceIndex, pieceLength,
-                  pieceHashes.get(pieceIndex), fileSize);
-
-              if (pieceData != null && pieceData.length == pieceLength) {
-                writePieceToFile(outputFilePath.toString(), pieceData, pieceIndex * pieceLength);
-                pieceStates.put(pieceIndex, PieceState.DOWNLOADED);
-                pieceDownloaders.remove(pieceIndex);
-                System.out.println(
-                    "Downloaded piece " + pieceIndex + " from " + peerSession.getIpAddress());
-              } else {
-                throw new IOException("Invalid piece data");
-              }
-            }
-          } catch (Exception e) {
-            System.err.println(
-                "Exception downloading piece " + pieceIndex + " from " + peerSession.getIpAddress()
-                    + ": " + e.getMessage());
-            pieceDownloaders.remove(pieceIndex);
-            pieceStates.put(pieceIndex, PieceState.NOT_DOWNLOADED);
-            pieceQueue.add(pieceIndex); // Re-add the piece to the queue for retry
-          }
-        }
-      });
-    }
-
-
   }
 
-  private static void writePieceToFile(String filePath, byte[] data, int offset)
-      throws IOException {
-    try (RandomAccessFile raf = new RandomAccessFile(filePath, "rw")) {
-      raf.seek(offset);
-      raf.write(data);
+  private void submitDownloadTasks(ExecutorService executor) {
+    List<Future<?>> futures = new ArrayList<>();
+    for (PeerSession peerSession : peerSessions) {
+      Future<?> future = executor.submit(() -> downloadPiecesForPeer(peerSession));
+      futures.add(future);
     }
+    // Store futures if you need to check individual task completion
+    this.downloadFutures = futures;
+  }
+
+
+  private void downloadPiecesForPeer(PeerSession peerSession) {
+    while (!pieceQueue.isEmpty() && !peerSession.getSessionState()
+        .equals(PeerSession.SessionState.DOWNLOADING)) {
+      Integer pieceIndex = pieceQueue.poll();
+      if (pieceIndex == null) {
+        break;
+      }
+
+      try {
+        System.out.println("Starting download for piece " + pieceIndex +
+            " from peer " + peerSession.getIpAddress());
+        downloadSinglePiece(peerSession, pieceIndex);
+      } catch (Exception e) {
+        handleDownloadError(peerSession, pieceIndex, e);
+        // Wait a bit before retrying to avoid overwhelming the peer
+        try {
+          Thread.sleep(1000); // Sleep for 1 second before retrying
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt(); // Restore interrupted status
+          System.err.println("Download interrupted while waiting to retry piece " + pieceIndex);
+        }
+      }
+    }
+  }
+
+  private void downloadSinglePiece(PeerSession peerSession, Integer pieceIndex)
+      throws IOException, PieceDownloadException {
+    PieceState state = pieceStates.get(pieceIndex);
+    if (state == PieceState.NOT_DOWNLOADED) {
+      pieceStates.put(pieceIndex, PieceState.DOWNLOADING);
+      pieceDownloaders.put(pieceIndex, peerSession);
+
+      byte[] pieceData = peerSession.downloadPiece(pieceIndex, pieceLength,
+          pieceHashes.get(pieceIndex), fileSize);
+
+      byte[] expectedHash = pieceHashes.get(pieceIndex);
+      if (pieceData != null && Arrays.equals(TorrentFileHandler.sha1Hash(pieceData), expectedHash)) {
+        writePieceToFile(outputFilePath.toString(), pieceData, pieceIndex * pieceLength);
+        pieceStates.put(pieceIndex, PieceState.DOWNLOADED);
+        pieceDownloaders.remove(pieceIndex);
+        System.out.println("Downloaded piece " + pieceIndex + " from " + peerSession.getIpAddress());
+      } else {
+        throw new IOException("Invalid piece data");
+      }
+    }
+  }
+
+  private void handleDownloadError(PeerSession peerSession, Integer pieceIndex, Exception e) {
+    System.err.println("Exception downloading piece " + pieceIndex + " from " +
+        peerSession.getIpAddress() + ": " + e.getMessage());
+    pieceDownloaders.remove(pieceIndex);
+    pieceStates.put(pieceIndex, PieceState.NOT_DOWNLOADED);
+    pieceQueue.add(pieceIndex);
+  }
+
+  private void writePieceToFile(String filePath, byte[] data, int offset)
+      throws IOException {
+    this.pieceWriter.writePiece(filePath, data, offset);
   }
 
   private void initializePeerSessions() {
@@ -278,4 +362,11 @@ public class TorrentSession {
     return pieceQueue;
   }
 
+  public ExecutorService getExecutor() {
+    return executor;
+  }
+
+  public List<Future<?>> getDownloadFutures() {
+    return downloadFutures;
+  }
 }

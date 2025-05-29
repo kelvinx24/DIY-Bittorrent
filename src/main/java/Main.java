@@ -2,6 +2,7 @@ import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 // import com.dampcake.bencode.Bencode; - available if you need it!
@@ -103,27 +104,14 @@ public class Main {
         String filepath = args[1];
 
         TorrentFileHandler tfh = new TorrentFileHandler(filepath);
-        PeerRequester peerRequester = new PeerRequester(tfh.getTrackerUrl(), 6881, tfh.getFileLength(), tfh.getInfoHash());
-        TrackerResponse tr = peerRequester.requestTracker();
-        Map.Entry<String, Integer> entr = tr.getPeersMap().entrySet().iterator().next();
+        DefaultTrackerClientFactory trackerClientFactory = new DefaultTrackerClientFactory();
+        DefaultPeerSessionFactory peerSessionFactory = new DefaultPeerSessionFactory();
+        DefaultPieceWriter pieceWriter = new DefaultPieceWriter();
+        RandomAlphaPeerIdGenerator peerIdGenerator = new RandomAlphaPeerIdGenerator();
+        Path outputPath = Paths.get("downloaded_" + tfh.getInfoMap().get("name"));
+        TorrentSession ts = new TorrentSession(tfh, outputPath, trackerClientFactory, peerSessionFactory, pieceWriter, peerIdGenerator);
 
-        String ipAddr = entr.getKey();
-        int port = entr.getValue();
-
-        byte[] handshake = peerRequester.peerHandshake(ipAddr, port);
-        System.out.println("Handshake: " + TorrentFileHandler.bytesToHex(handshake));
-        //byte[] piece = peerRequester.downloadPiece(2, tfh.getPieceLength(), tfh.getFileLength());
-
-        //peerRequester.writeToFile(piece, "piece_2.dat");
-        byte[] fullFile = new byte[tfh.getFileLength()];
-        for (int i = 0; i < tfh.getHashedPieces().size(); i++) {
-          byte[] piece = peerRequester.downloadPiece(i, tfh.getPieceLength(), tfh.getHashedPieces().get(i), tfh.getFileLength());
-          System.arraycopy(piece, 0, fullFile, i * tfh.getPieceLength(), piece.length);
-        }
-
-        peerRequester.writeToFile(fullFile, "downloaded_file.txt");
-        System.out.println("File downloaded and saved as downloaded_file.txt");
-        peerRequester.closeConnection();
+        ts.downloadAll();
     }
     else {
       System.out.println("Unknown command: " + command);

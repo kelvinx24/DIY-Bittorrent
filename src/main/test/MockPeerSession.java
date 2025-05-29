@@ -5,6 +5,7 @@ import java.util.List;
 public class MockPeerSession extends PeerSession {
 
   private List<byte[]> pieces;
+  private PeerSession.SessionState sessionState = PeerSession.SessionState.IDLE;
 
   public MockPeerSession(String ipAddress, int port, String peerId, byte[] infoHash,
       List<byte[]> pieces) {
@@ -19,6 +20,10 @@ public class MockPeerSession extends PeerSession {
   public MockPeerSession(String ipAddress, int port, String peerId, byte[] infoHash,
       Socket peerSocket) {
     super(ipAddress, port, peerId, infoHash, peerSocket);
+  }
+
+  public MockPeerSession() {
+    super("localhost", 6881, "0".repeat(20), new byte[20]);
   }
 
   @Override
@@ -45,6 +50,16 @@ public class MockPeerSession extends PeerSession {
   @Override
   public PeerSession.SessionState getSessionState() {
     // Mock implementation for testing purposes
-    return PeerSession.SessionState.IDLE;
+    return sessionState;
+  }
+
+  public void setSessionState(PeerSession.SessionState sessionState) {
+    // Mock implementation for testing purposes
+    this.sessionState = sessionState;
+  }
+
+  public void setPieces(List<byte[]> pieces) {
+    // Mock implementation for testing purposes
+    this.pieces = pieces;
   }
 }

@@ -1,22 +1,40 @@
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 
 public class TorrentSessionTests {
+
   private MockTorrentFileHandler torrentFileHandler;
   private MockInputStream mockInputStream;
   private OutputStream mockOutputStream;
@@ -28,6 +46,12 @@ public class TorrentSessionTests {
   private MockIdGenerator mockIdGenerator;
 
   private TorrentSession torrentSession;
+
+
+  @Mock
+  private MockPeerSession mockPeerSession1;
+  @Mock
+  private MockPeerSession mockPeerSession2;
 
   private static final String OUTPUT_FILE_NAME = "output.torrent";
 
@@ -44,6 +68,9 @@ public class TorrentSessionTests {
     this.mockPeerSessionFactory = new MockPeerSessionFactory();
     this.mockPieceWriter = new MockPieceWriter();
     this.mockIdGenerator = new MockIdGenerator();
+
+    this.mockPeerSession1 = mock(MockPeerSession.class);
+    this.mockPeerSession2 = mock(MockPeerSession.class);
   }
 
   @Test
@@ -56,7 +83,7 @@ public class TorrentSessionTests {
         mockPieceWriter,
         mockIdGenerator,
         Executors.newSingleThreadExecutor()
-        );
+    );
 
     assertNotNull(ts);
     assertEquals(20, ts.getPeerId().length());
@@ -195,7 +222,6 @@ public class TorrentSessionTests {
         Executors.newSingleThreadExecutor()
     );
 
-
     List<PeerSession> peers = ts.findRemotePeers();
     assertNotNull(peers);
     assertTrue(peers.isEmpty(), "Expected no peers to be found with default tracker client");
@@ -233,7 +259,8 @@ public class TorrentSessionTests {
     // Assuming piece index 0 is valid and can be downloaded
     byte[] pieceData = ts.downloadPiece(0);
     assertNotNull(pieceData, "Expected piece data to be downloaded");
-    assertEquals(torrentFileHandler.getPieceLength(), pieceData.length, "Downloaded piece length mismatch");
+    assertEquals(torrentFileHandler.getPieceLength(), pieceData.length,
+        "Downloaded piece length mismatch");
     assertEquals(piece1.length, pieceData.length, "Downloaded piece length mismatch");
     assertArrayEquals(piece1, pieceData, "Downloaded piece data does not match expected hash");
   }
@@ -259,8 +286,8 @@ public class TorrentSessionTests {
     exception = assertThrows(IllegalArgumentException.class, () -> {
       ts.downloadPiece(torrentFileHandler.getHashedPieces().size());
     });
-    assertEquals("Invalid piece index: " + torrentFileHandler.getHashedPieces().size(), exception.getMessage());
-
+    assertEquals("Invalid piece index: " + torrentFileHandler.getHashedPieces().size(),
+        exception.getMessage());
 
     TorrentSession emptySession = new TorrentSession(
         torrentFileHandler,
@@ -309,22 +336,274 @@ public class TorrentSessionTests {
     Exception exception2 = assertThrows(IOException.class, () -> {
       ts2.downloadPiece(0);
     });
-    assertEquals("Invalid piece data received", exception2.getMessage(), "Expected piece hash mismatch exception");
+    assertEquals("Invalid piece data received", exception2.getMessage(),
+        "Expected piece hash mismatch exception");
   }
 
   @Test
-  public void testDownloadAllPieces() throws IOException {
-    TorrentSession ts = new TorrentSession(
+  void testDownloadAll_SynchronousExecution() throws Exception {
+    DefinableTrackerClientFactory trackerClientFactory = setupTrackerClientFactory(3);
+    List<byte[]> pieces = setupPieces(5);
+    List<byte[]> pieceHashes = new ArrayList<>();
+    for (byte[] piece : pieces) {
+      pieceHashes.add(TorrentFileHandler.sha1Hash(piece));
+    }
+    torrentFileHandler.setPieceHashes(pieceHashes);
+    MockPeerSessionFactory peerSessionFactory = new MockPeerSessionFactory(pieces);
+
+    MockPieceWriter pieceWriter = new MockPieceWriter();
+    MockIdGenerator idGenerator = new MockIdGenerator();
+
+    TorrentSession torrentSession = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        trackerClientFactory,
+        peerSessionFactory,
+        pieceWriter,
+        idGenerator,
+        Executors.newSingleThreadExecutor()
+    );
+
+    // Download all pieces synchronously
+    torrentSession.downloadAll();
+    assertEquals(5, torrentSession.getPieceStates().size(), "Expected 5 pieces to be downloaded");
+    assertEquals(5, pieceWriter.getWrittenPieces().size(), "Expected 5 pieces to be written");
+
+  }
+
+  @Test
+  public void testDownloadAll_ConcurrentExecution() throws Exception {
+    DefinableTrackerClientFactory trackerClientFactory = setupTrackerClientFactory(2);
+    List<byte[]> pieces = setupPieces(2);
+    List<byte[]> pieceHashes = new ArrayList<>();
+    for (byte[] piece : pieces) {
+      pieceHashes.add(TorrentFileHandler.sha1Hash(piece));
+    }
+
+    torrentFileHandler.setPieceHashes(pieceHashes);
+    mockPeerSession1.setPieces(pieces);
+    mockPeerSession2.setPieces(pieces);
+
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2); // 2 peer sessions
+
+    // Create a custom executor that we can control
+    ExecutorService controlledExecutor = Executors.newFixedThreadPool(2);
+    PeerSessionFactory mockitoPeerSessionFactory = setupMockPeerSessions();
+
+    TorrentSession torrentSession = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        trackerClientFactory,
+        mockitoPeerSessionFactory,
+        this.mockPieceWriter,
+        this.mockIdGenerator,
+        controlledExecutor
+    );
+
+    // Configure peers to wait for our signal
+    when(mockPeerSession1.downloadPiece(eq(0), anyInt(), any(), anyInt()))
+        .thenAnswer(invocation -> {
+          startLatch.await(5, TimeUnit.SECONDS);
+          completionLatch.countDown();
+          return pieces.get(0);
+        });
+
+    when(mockPeerSession1.downloadPiece(eq(1), anyInt(), any(), anyInt()))
+        .thenAnswer(invocation -> {
+          startLatch.await(5, TimeUnit.SECONDS);
+          completionLatch.countDown();
+          return pieces.get(1);
+        });
+
+    when(mockPeerSession2.downloadPiece(eq(0), anyInt(), any(), anyInt()))
+        .thenAnswer(invocation -> {
+          startLatch.await(5, TimeUnit.SECONDS);
+          completionLatch.countDown();
+          return pieces.get(0);
+        });
+
+    when(mockPeerSession2.downloadPiece(eq(1), anyInt(), any(), anyInt()))
+        .thenAnswer(invocation -> {
+          startLatch.await(5, TimeUnit.SECONDS);
+          completionLatch.countDown();
+          return pieces.get(1);
+        });
+
+    // Start download in separate thread
+    Future<?> downloadFuture = Executors.newSingleThreadExecutor().submit(() -> {
+      try {
+        torrentSession.downloadAll();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
+
+    // Release the worker threads
+    startLatch.countDown();
+
+    // Wait for both peers to start processing
+    assertTrue(completionLatch.await(5, TimeUnit.SECONDS));
+
+    // Verify download completes
+    assertDoesNotThrow(() -> downloadFuture.get(5, TimeUnit.SECONDS));
+
+    controlledExecutor.shutdown();
+
+    assertEquals(2, mockPieceWriter.getWrittenPieces().size(), "Expected 5 pieces to be written");
+  }
+
+  @Test
+  void testDownloadAll_PeersWithDifferentStates() throws Exception {
+    List<byte[]> pieces = setupPieces(2);
+    List<byte[]> pieceHashes = hashedEquivalentPieces(pieces);
+
+    torrentFileHandler.setPieceHashes(pieceHashes);
+    PeerSessionFactory peerSessionFactory = setupMockPeerSessions();
+
+    // One peer connected, one downloading (should be skipped)
+    when(mockPeerSession1.getSessionState())
+        .thenReturn(PeerSession.SessionState.IDLE);
+    when(mockPeerSession2.getSessionState())
+        .thenReturn(PeerSession.SessionState.DOWNLOADING);
+
+    TorrentSession torrentSession = new TorrentSession(
         torrentFileHandler,
         Paths.get(OUTPUT_FILE_NAME),
         mockTrackerClientFactory,
+        peerSessionFactory,
+        mockPieceWriter,
+        mockIdGenerator,
+        Executors.newSingleThreadExecutor()
+    );
+
+    when(mockPeerSession1.downloadPiece(anyInt(), anyInt(), any(), anyInt()))
+        .thenReturn(pieces.get(0))
+        .thenReturn(pieces.get(1));
+
+    torrentSession.downloadAll();
+
+    // Only the connected peer should be used for downloading
+    verify(mockPeerSession1, atLeastOnce()).downloadPiece(anyInt(), anyInt(), any(), anyInt());
+    verify(mockPeerSession2, never()).downloadPiece(anyInt(), anyInt(), any(), anyInt());
+  }
+
+  @Test
+  void testDownloadAll_NoPeersAvailable() {
+    DefinableTrackerClientFactory emptyTrackerClientFactory = new DefinableTrackerClientFactory(
+        new HashMap<>());
+
+    TorrentSession torrentSession = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        emptyTrackerClientFactory,
         mockPeerSessionFactory,
         mockPieceWriter,
         mockIdGenerator,
         Executors.newSingleThreadExecutor()
     );
 
+    // Attempt to download all pieces with no peers available
+    Exception exception = assertThrows(IllegalStateException.class, () -> {
+      torrentSession.downloadAll();
+    });
+
+    assertEquals("No peers available for download", exception.getMessage(),
+        "Expected exception when no peers are available");
 
   }
 
+  @Test
+  public void testDownloadAll_RetryHandling() throws IOException {
+    PeerSessionFactory peerSessionFactory = setupMockPeerSessions();
+    List<byte[]> pieces = setupPieces(2);
+    List<byte[]> pieceHashes = hashedEquivalentPieces(pieces);
+    torrentFileHandler.setPieceHashes(pieceHashes);
+
+    when(mockPeerSession1.downloadPiece(anyInt(), anyInt(), any(), anyInt()))
+        .thenThrow(new PieceDownloadException("Simulated download failure"))
+        .thenReturn(pieces.get(1)); // Simulate successful retry
+
+    when(mockPeerSession2.downloadPiece(anyInt(), anyInt(), any(), anyInt()))
+        .thenThrow(new PieceDownloadException("Simulated download failure"))
+        .thenReturn(new byte[16384 * 2]) // wrong data to simulate retry failure
+        .thenReturn(pieces.get(0));
+
+    DefinableTrackerClientFactory mockTrackerClientFactory = setupTrackerClientFactory(2);
+
+    TorrentSession torrentSession = new TorrentSession(
+        torrentFileHandler,
+        Paths.get(OUTPUT_FILE_NAME),
+        mockTrackerClientFactory,
+        peerSessionFactory,
+        mockPieceWriter,
+        mockIdGenerator);
+
+    torrentSession.downloadAll();
+
+    assertEquals(2, mockPieceWriter.getWrittenPieces().size(),
+        "Expected 2 pieces to be downloaded");
+    assertArrayEquals(pieces.get(0), mockPieceWriter.getWrittenPieces().get(0),
+        "First piece should match expected data");
+
+    assertArrayEquals(pieces.get(1), mockPieceWriter.getWrittenPieces().get(32768));
+
+
+  }
+
+  private DefinableTrackerClientFactory setupTrackerClientFactory(int numPeers) {
+
+    Map<String, Integer> peers = new HashMap<>();
+
+    for (int i = 0; i < numPeers; i++) {
+      String randomIP = "127.0.0." + i;
+      int randomPort = 1000 + i;
+      peers.put(randomIP, randomPort);
+    }
+
+    DefinableTrackerClientFactory trackerClientFactory = new DefinableTrackerClientFactory(peers);
+    return trackerClientFactory;
+  }
+
+  private List<byte[]> setupPieces(int numPieces) {
+    List<byte[]> pieces = new ArrayList<>();
+    for (int i = 0; i < numPieces; i++) {
+      byte[] piece = new byte[16384 * 2]; // Example piece size
+      for (int j = 0; j < piece.length; j++) {
+        piece[j] = (byte) (j % 256) ; // Fill with some data
+        piece[i] = (byte) ((j + i) % 256); // Modify to differentiate pieces
+      }
+      pieces.add(piece);
+    }
+
+    return pieces;
+  }
+
+  private PeerSessionFactory setupMockPeerSessions() {
+    PeerSessionFactory mockPeerSessionFactory = mock(PeerSessionFactory.class);
+
+    // Configure the factory to return our mock peer sessions
+    when(mockPeerSessionFactory.create(any(), anyInt(), any(), any()))
+        .thenReturn(mockPeerSession1)
+        .thenReturn(mockPeerSession2);
+
+    // Configure mock peer sessions
+    when(mockPeerSession1.getSessionState())
+        .thenReturn(PeerSession.SessionState.IDLE);
+    when(mockPeerSession2.getSessionState())
+        .thenReturn(PeerSession.SessionState.IDLE);
+
+    when(mockPeerSession1.getIpAddress()).thenReturn("192.168.1.1");
+    when(mockPeerSession2.getIpAddress()).thenReturn("192.168.1.2");
+
+    return mockPeerSessionFactory;
+  }
+
+  private List<byte[]> hashedEquivalentPieces(List<byte[]> pieces) {
+    List<byte[]> hashedPieces = new ArrayList<>();
+    for (byte[] piece : pieces) {
+      hashedPieces.add(TorrentFileHandler.sha1Hash(piece));
+    }
+    return hashedPieces;
+  }
 }

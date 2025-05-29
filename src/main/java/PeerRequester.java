@@ -273,7 +273,7 @@ public class PeerRequester {
 			throw new IOException("Piece hash mismatch");
 		}
 
-		return  pieceData;
+		return pieceData;
 	}
 
 	public void writeToFile(byte[] data, String filePath) throws IOException {
