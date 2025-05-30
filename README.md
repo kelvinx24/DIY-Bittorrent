@@ -5,6 +5,7 @@ BitTorrent Java Client
 This is a simple Java-based BitTorrent client that supports decoding bencoded strings, reading .torrent metadata, connecting to peers, performing handshakes, and downloading pieces or full files.
 
 📦 Features
+
 ✅ Bencode decoding
 
 ✅ Torrent file metadata inspection (.torrent)
@@ -75,6 +76,7 @@ Output:
   - Currently assumes single-file torrents.
 
 🧪 Example .torrent File
+
   To test file downloads, you'll need a valid .torrent file referencing an available public tracker and seeders. Use sample.torrent.
 
 🧼 Known Limitations
