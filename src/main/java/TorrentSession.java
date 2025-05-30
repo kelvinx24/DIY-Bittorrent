@@ -348,7 +348,7 @@ public class TorrentSession {
    * specified peer session. It will keep trying to download pieces until either the piece queue is
    * empty or the peer session is no longer in the downloading state.
    *
-   * @param peerSession
+   * @param peerSession the PeerSession from which to download pieces
    */
   private void downloadPiecesForPeer(PeerSession peerSession) {
     while (!pieceQueue.isEmpty()) {

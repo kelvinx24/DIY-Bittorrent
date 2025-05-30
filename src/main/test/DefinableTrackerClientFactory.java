@@ -8,7 +8,7 @@ import java.util.Map;
  */
 public class DefinableTrackerClientFactory implements TrackerClientFactory {
 
-  private Map<String, Integer> peers;
+  private final Map<String, Integer> peers;
 
   /**
    * Constructs a DefinableTrackerClientFactory with no predefined peers.

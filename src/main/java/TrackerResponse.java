@@ -10,15 +10,16 @@ public class TrackerResponse {
 
   private final int interval;
   private final byte[] peers;
-  private Map<String, Integer> peersMap;
+  private final Map<String, Integer> peersMap;
 
   /**
    * Constructor for TrackerResponse with an interval and a byte array of peers. This constructor
    * initializes the interval and peers, and then parses the peers to create a map of IP addresses
    * and their corresponding ports.
    *
-   * @param interval
-   * @param peers
+   * @param interval the interval in seconds for the next request to the tracker
+   * @param peers    a byte array containing peer information, where each peer is represented by 6
+   *                 bytes:
    */
   public TrackerResponse(int interval, byte[] peers) {
     this.interval = interval;
@@ -28,11 +29,10 @@ public class TrackerResponse {
   }
 
   /**
-   * Parses the byte array of peers into a map of IP addresses and their corresponding ports.
-   * Each peer is represented by 6 bytes: 4 for the IP address and 2 for the port.
-   * This method iterates through the byte array in chunks of 6 bytes,
-   * extracts the IP address and port,
-   * and populates the peersMap with the IP as the key and the port as the value.
+   * Parses the byte array of peers into a map of IP addresses and their corresponding ports. Each
+   * peer is represented by 6 bytes: 4 for the IP address and 2 for the port. This method iterates
+   * through the byte array in chunks of 6 bytes, extracts the IP address and port, and populates
+   * the peersMap with the IP as the key and the port as the value.
    */
   private void parsePeers() {
     for (int i = 0; i < peers.length; i += 6) {

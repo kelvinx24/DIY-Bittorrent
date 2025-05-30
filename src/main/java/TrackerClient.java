@@ -60,7 +60,7 @@ public class TrackerClient {
    * @param downloadedFileSize the size of the downloaded file in bytes
    * @param infoHash           the info hash of the torrent file, must be 20 bytes long
    * @param peerId             the peer ID, must be 20 bytes long
-   * @throws IllegalArgumentException
+   * @throws IllegalArgumentException if any parameter is invalid
    */
   public TrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
       String peerId) throws IllegalArgumentException {

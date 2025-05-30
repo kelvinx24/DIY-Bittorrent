@@ -52,7 +52,7 @@ public class PeerSession {
 
   private SessionState sessionState;
 
-  private Socket peerSocket;
+  private final Socket peerSocket;
   private OutputStream outputStream;
   private InputStream inputStream;
 

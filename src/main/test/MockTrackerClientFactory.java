@@ -4,7 +4,7 @@
  */
 public class MockTrackerClientFactory implements TrackerClientFactory{
 
-  private boolean throwError;
+  private final boolean throwError;
 
   /**
    * Constructs a MockTrackerClientFactory with default parameters. No errors will be thrown.
