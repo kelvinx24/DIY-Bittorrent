@@ -1,13 +1,24 @@
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Mock implementation of an InputStream that allows for reading predefined byte arrays. This is
+ * useful for testing purposes where you want to simulate reading from a stream without relying on
+ * actual I/O operations. Used in unit tests for {@link TrackerClient} and {@link PeerSession}
+ *
+ * @author KX
+ */
 public class MockInputStream extends InputStream {
 
   private byte[] concatenatedBytes;
   private int currentIndex = 0;
 
+  /**
+   * Constructs a MockInputStream with a list of byte arrays to read from.
+   *
+   * @param readResponses a list of byte arrays that will be concatenated and read sequentially
+   */
   public MockInputStream(List<byte[]> readResponses) {
     super();
 
@@ -19,10 +30,19 @@ public class MockInputStream extends InputStream {
     }
   }
 
+  /**
+   * Default constructor for MockInputStream. Initializes an empty stream.
+   */
   public MockInputStream() {
     super();
   }
 
+  /**
+   * Returns the byte at the current index and increments the index.
+   *
+   * @return the byte at the current index, or -1 if the end of the stream has been reached
+   * throws IOException if an I/O error occurs
+   */
   @Override
   public int read() throws IOException {
     if (concatenatedBytes == null) {
@@ -31,6 +51,12 @@ public class MockInputStream extends InputStream {
     return concatenatedBytes[currentIndex++];
   }
 
+  /**
+   * Reads up to len bytes starting from the current index and returns them as a byte array.
+   * @param len the maximum number of bytes to read
+   * @return a byte array containing the read bytes, or null if there are no more bytes to read
+   * @throws IOException
+   */
   @Override
   public byte[] readNBytes(int len) throws IOException {
     if (concatenatedBytes == null) {
@@ -47,6 +73,11 @@ public class MockInputStream extends InputStream {
 
   }
 
+  /**
+   * Reads bytes into the provided byte array starting from the current index.
+   * @param b the byte array to read bytes into
+   * @return the number of bytes read, or -1 if there are no more bytes to read
+   */
   @Override
   public int read(byte[] b) {
     if (concatenatedBytes == null) {
@@ -65,6 +96,11 @@ public class MockInputStream extends InputStream {
     return bytesToRead;
   }
 
+  /**
+   * Concatenates a list of byte arrays into a single byte array.
+   * @param readResponses the list of byte arrays to concatenate
+   * @return a single byte array containing all the bytes from the list
+   */
   private byte[] createConcatenatedBytes(List<byte[]> readResponses) {
     int totalLength = 0;
     for (byte[] bytes : readResponses) {
@@ -87,6 +123,9 @@ public class MockInputStream extends InputStream {
     this.currentIndex = 0;
   }
 
+  /**
+   * Resets the current index to 0, allowing the stream to be read from the beginning again.
+   */
   public void reset() {
     this.currentIndex = 0;
   }

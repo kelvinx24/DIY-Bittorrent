@@ -1,3 +1,9 @@
+/**
+ * Randomly generates a random peer ID consisting of 20 lowercase alphabetic characters.
+ * This class implements the {@link RandomIdGenerator} interface.
+ *
+ * @author KX
+ */
 public class RandomAlphaPeerIdGenerator implements RandomIdGenerator {
   public String generate() {
     StringBuilder builder = new StringBuilder(20);

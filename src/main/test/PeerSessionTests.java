@@ -2,31 +2,23 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 
+/**
+ * Tests for the PeerSession class, which handles communication with a peer in a torrent network.
+ */
 public class PeerSessionTests {
   private PeerSession peerSession;
   private MockTorrentFileHandler torrentFileHandler;
@@ -49,6 +41,9 @@ public class PeerSessionTests {
     mockInputStream.reset();
   }
 
+  /**
+   * Tests the PeerSession constructor for various invalid initializations.
+   */
   @Test
   public void testInvalidInitialization() {
     // Initialize the PeerRequester with dummy values
@@ -95,6 +90,9 @@ public class PeerSessionTests {
 
   }
 
+  /**
+   * Tests the PeerSession constructor with valid parameters.
+   */
   @Test
   public void testValidInitialization() {
     MockTorrentFileHandler tfh = new MockTorrentFileHandler();
@@ -108,6 +106,9 @@ public class PeerSessionTests {
 
   }
 
+  /**
+   * Tests the peerHandshake method of the PeerSession class.
+   */
   @Test
   public void testPeerHandshake() throws IOException {
 
@@ -131,6 +132,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the peerHandshake method when bad responses are received.
+   */
   @Test
   public void testBadHandshake() throws IOException {
 
@@ -169,6 +173,9 @@ public class PeerSessionTests {
   }
 
 
+  /**
+   * Tests the establishInterested method of the PeerSession class.
+   */
   @Test
   public void testEstablishInterested() throws IOException {
     // Initialize the PeerRequester with dummy values
@@ -187,6 +194,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.INTERESTED, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the establishInterested method when bad response is received for bitfield.
+   */
   @Test
   public void testEstablishInterestedBadBitfield() {
     List<byte[]> responses = new ArrayList<>();
@@ -200,6 +210,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the establishInterested method when bad response is received for unchoke.
+   */
   @Test
   public void testEstablishInterestedBadUnchoke() {
     List<byte[]> responses = new ArrayList<>();
@@ -214,6 +227,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the establishInterested method when done correctly.
+   */
   @Test
   public void testEstablishInterestedTimeout() throws IOException {
     List<byte[]> responses = new ArrayList<>();
@@ -234,6 +250,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.HANDSHAKE, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the downloadPiece method when done correctly.
+   */
   @Test
   public void testDownloadPiece() throws Exception {
     int pieceIndex = 0;
@@ -282,6 +301,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
+  /**
+   * Tests the downloadPiece method when it times out.
+   */
   @Test
   public void testDownloadPieceTimeout() throws IOException {
     int pieceIndex = 0;
@@ -316,6 +338,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
+  /**
+   * Tests the downloadPiece method when a piece hash mismatch occurs.
+   */
   @Test
   public void testDownloadPieceHashMismatch() throws IOException {
     int pieceIndex = 0;
@@ -364,6 +389,10 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
+  /**
+   * Tests the downloadPiece method with an invalid piece index or offset.
+   * @throws IOException thrown if an I/O error occurs during the test
+   */
   @Test
   public void testDownloadPieceInvalidIndex() throws IOException {
     int pieceIndex = 0;
@@ -413,6 +442,10 @@ public class PeerSessionTests {
   }
 
 
+  /**
+   * Tests the downloadPiece method with an invalid offset.
+   * @throws IOException thrown if an I/O error occurs during the test
+   */
   @Test
   public void testDownloadPieceInvalidOffset() throws IOException {
     int pieceIndex = 0;
@@ -461,6 +494,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.IDLE, downloader.getSessionState());
   }
 
+  /**
+   * Tests the downloadPiece method when the peer connection is closed
+   */
   @Test
   public void testCloseConnection() throws IOException {
 
@@ -472,6 +508,9 @@ public class PeerSessionTests {
     assertEquals(PeerSession.SessionState.UNINITIALIZED, peerSession.getSessionState());
   }
 
+  /**
+   * Tests the closeConnection method when the connection is already closed.
+   */
   @Test
   public void testCloseConnectionTwice() throws IOException {
     // Close the connection once

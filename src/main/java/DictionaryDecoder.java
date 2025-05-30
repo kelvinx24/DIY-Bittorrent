@@ -1,10 +1,24 @@
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * DictionaryDecoder is responsible for decoding bencoded dictionaries from a string or byte array.
+ * It relies on a DecoderDispatcher to handle the decoding of keys and values within the dictionary.
+ * This class implements the {@link DecoderDTO} interface
+ *
+ * @author KX
+ */
 public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 
   private final DecoderDispatcher dispatcher;
 
+  /**
+   * Constructor for DictionaryDecoder. This initializes the decoder with a
+   * {@link DecoderDispatcher}
+   *
+   * @param dispatcher the {@link DictionaryDecoder} used to decode keys and values within the
+   *                   dictionary.
+   */
   public DictionaryDecoder(DecoderDispatcher dispatcher) {
     this.dispatcher = dispatcher;
   }
@@ -71,11 +85,13 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 
     Map<String, Object> dict = new LinkedHashMap<>();
     int index = startIndex + 1; // Skip 'd'
-    int infoIndexStart = index; // Store the start index for info
-    int infoIndexEnd = index; // Initialize the end index for info
+    int infoIndexStart = index;
+    int infoIndexEnd = index;
 
     LinkedHashMap<String, NumberPair> byteRanges = new LinkedHashMap<>();
+    // Continues to decode via the dispatcher until it finds 'e' - the end of the dictionary
     while (index < bencodedBytes.length && bencodedBytes[index] != 'e') {
+      // Decode the key using the dispatcher
       DecoderByteDTO<?> keyResultByte = dispatcher.decode(bencodedBytes, index);
       DecoderDTO<?> keyResult = keyResultByte.getDecoderDTO();
       String key;
@@ -85,7 +101,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
       }
       key = (String) keyResult.getValue(); // Keys are always strings
 
-      // Move the index to the end of the key
+      // Move the index to the start of the value
       index = keyResult.getNextIndex();
       if (index >= bencodedBytes.length || bencodedBytes[index] == 'e') {
         throw new IllegalArgumentException(
@@ -94,22 +110,26 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
 
       infoIndexStart = index;
 
+      // Decode the value using the dispatcher
       DecoderByteDTO<?> valueResultByte = dispatcher.decode(bencodedBytes, index);
       DecoderDTO<?> valueResult = valueResultByte.getDecoderDTO();
       dict.put(key, valueResult.getValue());
       // Move the index to the end of the value
       index = valueResult.getNextIndex();
 
+      // if key is "info", we store the entire byte range after the key
       if (key.equals("info")) {
-        // shift the infoIndexStart to the value start
         infoIndexEnd = index;
         byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
       } else {
+        // For other keys, we store the byte range for the value only - no prefix or suffix
         infoIndexStart = valueResultByte.getValueRange().first();
         infoIndexEnd = valueResultByte.getValueRange().second();
         byteRanges.put(key, new NumberPair(infoIndexStart, infoIndexEnd));
       }
 
+      // Add the byte ranges for the keys and values to the byteRanges map from the valueResultByte
+      // This will keep track of the byte ranges for each key-value pair after each recursive call
       for (Map.Entry<String, NumberPair> entry : valueResultByte.getByteRanges().entrySet()) {
         String keyByteRange = entry.getKey();
         NumberPair valueByteRange = entry.getValue();

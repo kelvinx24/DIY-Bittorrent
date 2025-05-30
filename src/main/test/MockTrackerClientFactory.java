@@ -1,11 +1,23 @@
+/**
+ * A mock implementation of {@link TrackerClientFactory} for testing purposes.
+ * This factory creates instances of {@link MockTrackerClient}.
+ */
 public class MockTrackerClientFactory implements TrackerClientFactory{
 
   private boolean throwError;
 
+  /**
+   * Constructs a MockTrackerClientFactory with default parameters. No errors will be thrown.
+   */
   public MockTrackerClientFactory() {
     this.throwError = false;
   }
 
+  /**
+   * Constructs a MockTrackerClientFactory that can throw an error when creating a TrackerClient.
+   *
+   * @param throwError if true, the factory will create a TrackerClient that simulates an error
+   */
   public MockTrackerClientFactory(boolean throwError) {
     this.throwError = throwError;
   }

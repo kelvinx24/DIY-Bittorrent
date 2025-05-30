@@ -7,7 +7,17 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/**
+ * PeerSession class represents a session with a peer in a BitTorrent network. It handles the
+ * handshake, interested state, and downloading pieces of a torrent.
+ *
+ * @author KX
+ */
 public class PeerSession {
+
+  /**
+   * Enum representing the state of the peer session.
+   */
   public enum SessionState {
     UNINITIALIZED,
     HANDSHAKE,
@@ -48,13 +58,35 @@ public class PeerSession {
 
   private String sessionPeerId;
 
-  private record PeerMessage(int id, byte[] payload) {}
+  private record PeerMessage(int id, byte[] payload) {
 
+  }
+
+  /**
+   * Constructs a PeerSession with the specified parameters. Uses a default Socket.
+   * Values originate from torrent file and tracker response.
+   *
+   * @param ipAddress The IP address of the peer.
+   * @param port      The port number of the peer.
+   * @param peerId    The unique identifier for the peer (20 bytes).
+   * @param infoHash  The info hash of the torrent (20 bytes).
+   */
   public PeerSession(String ipAddress, int port, String peerId, byte[] infoHash) {
     this(ipAddress, port, peerId, infoHash, new Socket());
   }
 
-  public PeerSession(String ipAddress, int port, String peerId, byte[] infoHash, Socket peerSocket) {
+  /**
+   * Constructs a PeerSession with the specified parameters and a custom Socket.
+   *
+   * @param ipAddress  The IP address of the peer.
+   * @param port       The port number of the peer.
+   * @param peerId     The unique identifier for the peer (20 bytes).
+   * @param infoHash   The info hash of the torrent (20 bytes).
+   * @param peerSocket The socket to communicate with the peer. Typically used for testing or custom
+   *                   configurations.
+   */
+  public PeerSession(String ipAddress, int port, String peerId, byte[] infoHash,
+      Socket peerSocket) {
     if (ipAddress == null || ipAddress.isEmpty()) {
       throw new IllegalArgumentException("IP address cannot be null or empty");
     }
@@ -87,16 +119,27 @@ public class PeerSession {
     this.peerSocket = peerSocket;
   }
 
+  /**
+   * Performs the initial handshake with the peer. This method connects to the peer, sends a
+   * handshake message, and waits for a response. If the response is valid, it updates the session
+   * state to HANDSHAKE and returns the response bytes. If the response is invalid or an error
+   * occurs, it closes the connection and throws an IOException.
+   *
+   * @return the response bytes from the peer after the handshake.
+   * @throws IOException if an error occurs during the handshake process, such as connection
+   *                     failure,
+   */
   public synchronized byte[] peerHandshake() throws IOException {
     peerSocket.connect(new InetSocketAddress(ipAddress, port), 5000);
-
-    // Will automatically close the streams when done
     this.outputStream = peerSocket.getOutputStream();
     this.inputStream = peerSocket.getInputStream();
+
+    // Build and send the handshake message
     byte[] handshake = buildHandshake();
     outputStream.write(handshake);
     outputStream.flush();
 
+    // Read the response from the peer
     byte[] response = new byte[HANDSHAKE_SIZE];
     int bytesRead = inputStream.read(response);
 
@@ -104,7 +147,6 @@ public class PeerSession {
       this.closeConnection();
       throw new IOException("No response from peer");
     }
-
 
     // Check if the response is valid
     String protocol = new String(response, 1, HANDSHAKE_PROTOCOL_SIZE);
@@ -119,6 +161,7 @@ public class PeerSession {
       throw new IOException("Info hash mismatch");
     }
 
+    // Set the session state and peer ID after successful handshake
     this.sessionPeerId = new String(peerId);
     this.sessionState = SessionState.HANDSHAKE;
 
@@ -140,12 +183,20 @@ public class PeerSession {
     return byteArrayStream.toByteArray();
   }
 
+  /**
+   * Establishes the interested state with the peer by performing the BITFIELD and UNCHOKE
+   *
+   * @return true if the interested state was successfully established, false otherwise.
+   * @throws IOException if an error occurs during the process, such as a timeout waiting for
+   *                     messages.
+   */
   public boolean establishInterested() throws IOException {
+    // Perform handshake if not already done
     if (this.inputStream == null || this.outputStream == null) {
       peerHandshake();
     }
 
-    long startTime = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis(); // Start the timer for timeout
 
     // Wait for BITFIELD message
     while (true) {
@@ -154,7 +205,9 @@ public class PeerSession {
       }
 
       PeerMessage message = readMessage(inputStream);
-      if (message == null) continue;
+      if (message == null) {
+        continue;
+      }
 
       if (message.id == BITFIELD_RESPONSE_ID) {
         break;
@@ -173,7 +226,9 @@ public class PeerSession {
       }
 
       PeerMessage message = readMessage(inputStream);
-      if (message == null) continue;
+      if (message == null) {
+        continue;
+      }
 
       if (message.id == UNCHOKE_RESPONSE_ID) {
         break;
@@ -187,7 +242,7 @@ public class PeerSession {
   private void sendInterested(OutputStream out) throws IOException {
     ByteArrayOutputStream msg = new ByteArrayOutputStream();
     msg.write(intToBytes(1)); // length
-    msg.write(2);             // ID = interested
+    msg.write(INTERESTED_ID);             // ID = interested
     out.write(msg.toByteArray());
     out.flush();
   }
@@ -195,7 +250,7 @@ public class PeerSession {
   private void sendRequest(OutputStream out, int index, int begin, int length) throws IOException {
     ByteArrayOutputStream msg = new ByteArrayOutputStream();
     msg.write(intToBytes(13)); // 1 (ID) + 12 (payload)
-    msg.write(6);              // ID = request
+    msg.write(REQUEST_ID);              // ID = request
     msg.write(intToBytes(index));
     msg.write(intToBytes(begin));
     msg.write(intToBytes(length));
@@ -204,28 +259,47 @@ public class PeerSession {
   }
 
   private static PeerMessage readMessage(InputStream in) throws IOException {
-    byte[] lenBytes = in.readNBytes(4);
-    if (lenBytes == null || lenBytes.length != 4) return null;
+    byte[] lenBytes = in.readNBytes(4); // Read the first 4 bytes for length of payload
+    if (lenBytes == null || lenBytes.length != 4) {
+      return null;
+    }
 
     int length = ByteBuffer.wrap(lenBytes).getInt();
-    if (length == 0) return null; // keep-alive
+    if (length == 0) {
+      return null; // keep-alive
+    }
 
     int id = in.read();
-    byte[] payload = in.readNBytes(length - 1);
+    byte[] payload = in.readNBytes(length - 1); // Read the rest of the payload
     return new PeerMessage(id, payload);
   }
 
+  /**
+   * Downloads a piece of the torrent from the peer. This method requests the specified piece and
+   * waits for the blocks to be received. After combining the blocks, it validates the piece against
+   * the expected SHA-1 hash and returns the downloaded piece data.
+   *
+   * @param pieceIndex   the index of the piece to download.
+   * @param pieceLength  the length of the piece in bytes.
+   * @param expectedHash the expected SHA-1 hash of the piece, used for validation.
+   * @param fileLength   the total length of the file being downloaded, used to adjust the final
+   *                     piece size
+   * @return the downloaded piece data as a byte array.
+   * @throws IOException if an error occurs during the download process, such as a timeout or
+   *                     connection issue.
+   * @throws PieceDownloadException if the downloaded piece does not match the expected hash or if
+   *                                the piece index or offset is invalid.
+   */
   public byte[] downloadPiece(int pieceIndex, int pieceLength, byte[] expectedHash, int fileLength)
       throws IOException, PieceDownloadException {
 
-    setPieceState(pieceIndex, pieceLength, 0);
-    int remainingBytes = fileLength - pieceIndex * pieceLength;
-
+    // Ensure the session is in a valid state before downloading
     if (this.sessionState.ordinal() < SessionState.INTERESTED.ordinal()) {
       establishInterested(); // performs BITFIELD/UNCHOKE negotiation
     }
 
     // Adjust the final piece size if it's shorter
+    int remainingBytes = fileLength - pieceIndex * pieceLength;
     if (remainingBytes < pieceLength) {
       pieceLength = Math.max(0, remainingBytes);
     }
@@ -241,7 +315,9 @@ public class PeerSession {
     long startTime = System.currentTimeMillis();
 
     this.sessionState = SessionState.DOWNLOADING;
+    // Receive the blocks for the piece, assemble them, and validate the piece
     try {
+      setPieceState(pieceIndex, pieceLength, 0);
       while (totalReceived < pieceLength) {
 
         // Check for timeout
@@ -275,7 +351,7 @@ public class PeerSession {
 
         System.arraycopy(block, 0, pieceData, begin, block.length);
         totalReceived += block.length;
-        currentPieceOffset = begin + block.length;
+        currentPieceOffset = begin + block.length; // Update current piece offset for next block
 
         // Reset timeout on successful block
         startTime = System.currentTimeMillis();
@@ -289,7 +365,7 @@ public class PeerSession {
 
       return pieceData;
     } finally {
-      // Ensure we reset the piece state even if an exception occurs
+      // Ensure we reset the piece state and session state if an exception occurs
       resetPieceState();
       this.sessionState = SessionState.IDLE;
     }
@@ -308,7 +384,11 @@ public class PeerSession {
     this.currentPieceOffset = pieceOffset;
   }
 
-
+  /**
+   * Closes the connection to the peer and resets the session state to UNINITIALIZED.
+   *
+   * @throws IOException if an error occurs while closing the connection.
+   */
   public synchronized void closeConnection() throws IOException {
     if (peerSocket != null && !peerSocket.isClosed()) {
 
@@ -358,7 +438,7 @@ public class PeerSession {
     return sessionState;
   }
 
-  public String  getSessionPeerId() {
+  public String getSessionPeerId() {
     return sessionPeerId;
   }
 
@@ -368,13 +448,17 @@ public class PeerSession {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof PeerSession)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof PeerSession)) {
+      return false;
+    }
     PeerSession that = (PeerSession) o;
     return port == that.port &&
-           ipAddress.equals(that.ipAddress) &&
-           peerId.equals(that.peerId) &&
-           Arrays.equals(infoHash, that.infoHash);
+        ipAddress.equals(that.ipAddress) &&
+        peerId.equals(that.peerId) &&
+        Arrays.equals(infoHash, that.infoHash);
   }
 
   @Override

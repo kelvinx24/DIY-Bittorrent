@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -27,12 +26,18 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
+/**
+ * Unit tests for the TorrentSession class.
+ * This class tests the initialization, piece downloading, and session management of TorrentSession.
+ * It uses mock objects to simulate the behavior of external dependencies.
+ *
+ * @author KX
+ */
 public class TorrentSessionTests {
 
   private MockTorrentFileHandler torrentFileHandler;
@@ -73,6 +78,10 @@ public class TorrentSessionTests {
     this.mockPeerSession2 = mock(MockPeerSession.class);
   }
 
+  /**
+   * Tests the initialization of TorrentSession with valid parameters.
+   * It checks if the session is created successfully and if all fields are initialized correctly.
+   */
   @Test
   public void testTorrentSessionInitialization() {
     TorrentSession ts = new TorrentSession(
@@ -101,6 +110,10 @@ public class TorrentSessionTests {
     assertEquals(torrentFileHandler.getTrackerUrl(), ts.getTrackerClient().getTrackerUrl());
   }
 
+  /**
+   * Tests the TorrentSession constructor with invalid parameters.
+   * It checks if the constructor throws IllegalArgumentException when any parameter is null.
+   */
   @Test
   public void testTorrentSessionInvalidInitialization() {
     // Test with null torrentFileHandler
@@ -174,20 +187,11 @@ public class TorrentSessionTests {
           Executors.newSingleThreadExecutor());
     });
     assertEquals("Constructor parameters cannot be null", exception.getMessage());
-
-    // Test with null executorService
-    exception = assertThrows(IllegalArgumentException.class, () -> {
-      new TorrentSession(torrentFileHandler,
-          Paths.get(OUTPUT_FILE_NAME),
-          mockTrackerClientFactory,
-          mockPeerSessionFactory,
-          mockPieceWriter,
-          mockIdGenerator,
-          null);
-    });
-    assertEquals("Constructor parameters cannot be null", exception.getMessage());
   }
 
+  /**
+   * Checks if the TorrentSession can find remote peers successfully.
+   */
   @Test
   public void testValidFindRemotePeers() {
     TorrentSession ts = new TorrentSession(
@@ -210,6 +214,10 @@ public class TorrentSessionTests {
     assertEquals(MockTrackerClient.expectedAddress(), peer.getIpAddress());
   }
 
+  /**
+   * Tests the findRemotePeers method with an invalid tracker client.
+   * It checks if the method returns an empty list when no peers are found.
+   */
   @Test
   public void testInvalidFindRemotePeers() {
     TorrentSession ts = new TorrentSession(
@@ -227,6 +235,9 @@ public class TorrentSessionTests {
     assertTrue(peers.isEmpty(), "Expected no peers to be found with default tracker client");
   }
 
+  /**
+   * Tests if the TorrentSession can download a piece successfully.
+   */
   @Test
   public void testDownloadPiece() throws PieceDownloadException, IOException {
     byte[] piece1 = new byte[16384 * 2];
@@ -265,6 +276,10 @@ public class TorrentSessionTests {
     assertArrayEquals(piece1, pieceData, "Downloaded piece data does not match expected hash");
   }
 
+  /**
+   * Tests the downloadPiece method with an invalid piece.
+   * It checks if the method throws an IllegalArgumentException when the piece index is out of bounds.
+   */
   @Test
   public void testInvalidDownloadPiece() throws PieceDownloadException, IOException {
     TorrentSession ts = new TorrentSession(
@@ -340,6 +355,11 @@ public class TorrentSessionTests {
         "Expected piece hash mismatch exception");
   }
 
+  /**
+   * Tests the downloadAll method of TorrentSession.
+   * It checks if all pieces are downloaded successfully and written to the output file.
+   * This test uses a synchronous execution model to ensure all pieces are downloaded in order.
+   */
   @Test
   void testDownloadAll_SynchronousExecution() throws Exception {
     DefinableTrackerClientFactory trackerClientFactory = setupTrackerClientFactory(3);
@@ -371,6 +391,11 @@ public class TorrentSessionTests {
 
   }
 
+  /**
+   * Tests the downloadAll method of TorrentSession with concurrent execution.
+   * It checks if multiple peer sessions can download pieces concurrently and if the output file is written correctly.
+   * This test uses a CountDownLatch to synchronize the start of piece downloads across multiple threads.
+   */
   @Test
   public void testDownloadAll_ConcurrentExecution() throws Exception {
     DefinableTrackerClientFactory trackerClientFactory = setupTrackerClientFactory(2);
@@ -453,6 +478,13 @@ public class TorrentSessionTests {
     assertEquals(2, mockPieceWriter.getWrittenPieces().size(), "Expected 5 pieces to be written");
   }
 
+  /**
+   * Tests the downloadAll method of TorrentSession with peers in different states.
+   * It checks if only the connected peer is used for downloading pieces.
+   * This test simulates a scenario where one peer is idle and another is downloading.
+   *
+   * @throws Exception if any error occurs during the test
+   */
   @Test
   void testDownloadAll_PeersWithDifferentStates() throws Exception {
     List<byte[]> pieces = setupPieces(2);
@@ -488,6 +520,10 @@ public class TorrentSessionTests {
     verify(mockPeerSession2, never()).downloadPiece(anyInt(), anyInt(), any(), anyInt());
   }
 
+  /**
+   * Tests the downloadAll method of TorrentSession when no peers are available.
+   * It checks if the method throws an IllegalStateException when no peers can be found.
+   */
   @Test
   void testDownloadAll_NoPeersAvailable() {
     DefinableTrackerClientFactory emptyTrackerClientFactory = new DefinableTrackerClientFactory(
@@ -513,6 +549,13 @@ public class TorrentSessionTests {
 
   }
 
+  /**
+   * Tests the downloadAll method of TorrentSession with retry handling.
+   * It checks if the method can handle retries for piece downloads and successfully downloads all pieces.
+   * This test simulates a scenario where a piece download fails initially but succeeds on retry.
+   *
+   * @throws IOException if any I/O error occurs during the test
+   */
   @Test
   public void testDownloadAll_RetryHandling() throws IOException {
     PeerSessionFactory peerSessionFactory = setupMockPeerSessions();

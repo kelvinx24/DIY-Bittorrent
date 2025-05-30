@@ -9,6 +9,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * A client for interacting with a BitTorrent tracker. This class handles sending requests to the
+ * tracker and parsing the responses.
+ *
+ * @author KX
+ */
 public class TrackerClient {
 
   public static final Set<Byte> UNRESERVED = new HashSet<>();
@@ -45,12 +51,34 @@ public class TrackerClient {
 
   private final HttpClient client;
 
+  /**
+   * Constructs a TrackerClient with default parameters. Uses a HTTP client with a 20-second
+   * timeout.
+   *
+   * @param trackerUrl         the URL of the tracker
+   * @param port               the port to connect to
+   * @param downloadedFileSize the size of the downloaded file in bytes
+   * @param infoHash           the info hash of the torrent file, must be 20 bytes long
+   * @param peerId             the peer ID, must be 20 bytes long
+   * @throws IllegalArgumentException
+   */
   public TrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
       String peerId) throws IllegalArgumentException {
     this(trackerUrl, port, downloadedFileSize, infoHash, peerId,
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
   }
 
+  /**
+   * Constructs a TrackerClient with specified parameters. Uses the provided HttpClient instance.
+   *
+   * @param trackerUrl         the URL of the tracker
+   * @param port               the port to connect to
+   * @param downloadedFileSize the size of the downloaded file in bytes
+   * @param infoHash           the info hash of the torrent file, must be 20 bytes long
+   * @param peerId             the peer ID, must be 20 bytes long
+   * @param client             an HttpClient instance to use for requests
+   * @throws IllegalArgumentException if any parameter is invalid
+   */
   public TrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
       String peerId, HttpClient client) throws IllegalArgumentException {
     if (trackerUrl == null || trackerUrl.isEmpty()) {
@@ -90,8 +118,17 @@ public class TrackerClient {
     this.client = client;
   }
 
-
-  public TrackerResponse requestTracker() throws TrackerCommunicationException, IllegalArgumentException, MalformedTrackerResponseException {
+  /**
+   * Requests the tracker for peer information.
+   *
+   * @return {@link TrackerResponse} containing the interval and peer list in binary format
+   * @throws TrackerCommunicationException     if there is an error communicating with the tracker
+   * @throws IllegalArgumentException          if any parameter is invalid
+   * @throws MalformedTrackerResponseException if the tracker response is malformed or missing
+   *                                           required fields
+   */
+  public TrackerResponse requestTracker()
+      throws TrackerCommunicationException, IllegalArgumentException, MalformedTrackerResponseException {
     String trackerUrl = buildTrackerUrl();
     System.out.println("Requesting tracker: " + trackerUrl);
 
@@ -103,7 +140,8 @@ public class TrackerClient {
     }
   }
 
-  private HttpResponse<byte[]> sendTrackerRequest(String trackerUrl) throws IOException, InterruptedException, TrackerCommunicationException {
+  private HttpResponse<byte[]> sendTrackerRequest(String trackerUrl)
+      throws IOException, InterruptedException, TrackerCommunicationException {
     HttpRequest request = HttpRequest.newBuilder()
         .uri(URI.create(trackerUrl))
         .GET()
@@ -111,12 +149,23 @@ public class TrackerClient {
 
     HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
     if (response.statusCode() != 200) {
-      throw new TrackerCommunicationException("Tracker returned non-200 response: " + response.statusCode());
+      throw new TrackerCommunicationException(
+          "Tracker returned non-200 response: " + response.statusCode());
     }
     return response;
   }
 
-  private TrackerResponse parseTrackerResponse(byte[] responseBody) throws IllegalArgumentException, MalformedTrackerResponseException {
+  /**
+   * Parses the tracker response and extracts the interval and peer list. Using
+   * {@link DecoderDispatcher}
+   *
+   * @param responseBody the raw byte array of the tracker response
+   * @return a TrackerResponse containing the interval and peer list in binary format
+   * @throws IllegalArgumentException          if the response cannot be decoded
+   * @throws MalformedTrackerResponseException if the response is missing required fields
+   */
+  private TrackerResponse parseTrackerResponse(byte[] responseBody)
+      throws IllegalArgumentException, MalformedTrackerResponseException {
     try {
       DecoderDispatcher decoderDispatcher = new DecoderDispatcher();
       DictionaryDecoder dictionaryDecoder = new DictionaryDecoder(decoderDispatcher);
@@ -125,7 +174,8 @@ public class TrackerClient {
 
       // Validate required fields
       if (!decodedResponse.containsKey(PEERS_KEY) || !decodedResponse.containsKey(INTERVAL_KEY)) {
-        StringBuilder exceptionMessage = new StringBuilder("Missing 'peers' or 'interval' in tracker response");
+        StringBuilder exceptionMessage = new StringBuilder(
+            "Missing 'peers' or 'interval' in tracker response");
         exceptionMessage.append("\n").append("Current Response: ").append(decodedResponse);
         throw new MalformedTrackerResponseException(exceptionMessage.toString());
       }
@@ -142,8 +192,7 @@ public class TrackerClient {
       return new TrackerResponse(interval, peersArray);
     } catch (MalformedTrackerResponseException e) {
       throw e;
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new IllegalArgumentException("Failed to decode tracker response: "
           + e.getMessage() + "\n" + "Response: " + Arrays.toString(responseBody), e);
     }
@@ -162,6 +211,14 @@ public class TrackerClient {
     return url.toString();
   }
 
+  /**
+   * URL-encodes a byte array representing a hash. This method encodes each byte in the hash to a
+   * percent-encoded format if it is not an unreserved character.
+   *
+   * @param hash the byte array to encode, must not be null or empty
+   * @return a URL-encoded string representation of the hash
+   * @throws IllegalArgumentException if the hash is null or empty
+   */
   public static String urlEncodeHash(byte[] hash) {
     if (hash == null || hash.length == 0) {
       throw new IllegalArgumentException("Hash cannot be null or empty");

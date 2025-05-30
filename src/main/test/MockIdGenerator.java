@@ -1,3 +1,6 @@
+/**
+ * Mock implementation of {@link RandomIdGenerator} that always returns a fixed ID.
+ */
 public class MockIdGenerator implements RandomIdGenerator {
 
   @Override

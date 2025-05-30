@@ -1,11 +1,16 @@
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-
+/**
+ * This file contains unit tests for the TorrentFileHandler class.
+ */
 public class TorrentFileHandlerTests
 {
 	private TorrentFileHandler torrentFileHandler;
 
+	/**
+	 * Tests for bad file paths, invalid file types, and empty or null file names.
+	 */
 	@Test
 	public void testIllegalFileInitialization()
 	{
@@ -38,6 +43,9 @@ public class TorrentFileHandlerTests
 		assertEquals("File name cannot be null", exception.getMessage());
 	}
 
+	/**
+	 * Tests for valid file initialization, ensuring that all fields are correctly populated.
+	 */
 	@Test
 	public void testValidFileInitialization()
 	{

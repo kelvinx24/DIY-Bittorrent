@@ -1,9 +1,17 @@
 import java.util.List;
 
+/**
+ * Mock implementation of the {@link TorrentFileHandler} for testing purposes.
+ * Has the ability to define piece hashes and other properties.
+ */
 public class MockTorrentFileHandler extends TorrentFileHandler {
 
   private List<byte[]> pieceHashes;
 
+  /**
+   * Constructs a MockTorrentFileHandler with default parameters.
+   * Initializes with a sample torrent file path and predefined piece hashes.
+   */
   public MockTorrentFileHandler() {
     super("sample.torrent"); // or dummy path if needed
     this.pieceHashes = List.of(
@@ -13,6 +21,12 @@ public class MockTorrentFileHandler extends TorrentFileHandler {
     );
   }
 
+  /**
+   * Constructs a MockTorrentFileHandler with a specified file path.
+   * Initializes with predefined piece hashes.
+   *
+   * @param filePath the path to the torrent file
+   */
   public MockTorrentFileHandler(String filePath) {
     super(filePath);
     this.pieceHashes = List.of(
@@ -22,6 +36,12 @@ public class MockTorrentFileHandler extends TorrentFileHandler {
     );
   }
 
+  /**
+   * Constructs a MockTorrentFileHandler with a specified file path and piece hashes.
+   *
+   * @param filePath the path to the torrent file
+   * @param pieceHashes a list of byte arrays representing the piece hashes
+   */
   public MockTorrentFileHandler(String filePath, List<byte[]> pieceHashes) {
     super(filePath);
     this.pieceHashes = pieceHashes;

@@ -1,29 +1,38 @@
 import java.net.http.HttpClient;
 import java.util.Map;
 
+/**
+ * A mock implementation of {@link TrackerClient} that allows defining peers for testing purposes.
+ *
+ * @author KX
+ */
 public class DefinableTrackerClient extends TrackerClient {
 
   private Map<String, Integer> peers;
 
-  public DefinableTrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
-      String peerId) throws IllegalArgumentException {
-    super(trackerUrl, port, downloadedFileSize, infoHash, peerId);
-  }
-
-  public DefinableTrackerClient(String trackerUrl, int port, int downloadedFileSize, byte[] infoHash,
-      String peerId, HttpClient client) throws IllegalArgumentException {
-    super(trackerUrl, port, downloadedFileSize, infoHash, peerId, client);
-  }
-
+  /**
+   * Constructs a DefinableTrackerClient with default parameters.
+   *
+   * @throws IllegalArgumentException if any parameter is invalid
+   */
   public DefinableTrackerClient() {
     super("http://bittorrent-test-tracker.codecrafters.io/announce", 8080, 1, new byte[20], "0".repeat(20));
   }
 
+  /**
+   * Constructs a DefinableTrackerClient with specified peers.
+   *
+   * @param peers a map of peer IP addresses and their corresponding ports
+   */
   public DefinableTrackerClient(Map<String, Integer> peers) {
     this();
     this.peers = peers;
   }
 
+  /**
+   * Mock implementation of the requestTracker method.
+   * @return a TrackerResponse containing the defined peers
+   */
   @Override
   public TrackerResponse requestTracker() throws TrackerCommunicationException,
       IllegalArgumentException, MalformedTrackerResponseException {
