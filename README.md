@@ -18,11 +18,9 @@ This is a simple Java-based BitTorrent client that supports decoding bencoded st
 ✅ Full file download using multiple peers concurrently
 
 🛠️ Requirements
-Java 8 or higher
-
-Gson (for JSON output)
-
-Internet access (to reach public trackers/peers)
+- Java 8 or higher
+- Gson (for JSON output)
+- Internet access (to reach public trackers/peers)
 
 🚀 Usage
 Compile the project using your preferred Java build tool (Maven), then run the Main class with one of the supported commands.
@@ -30,82 +28,58 @@ Compile the project using your preferred Java build tool (Maven), then run the M
 `java model.Main <command> [args...]`
 
 🧪 Commands
-1. Decode bencoded string
-`java model.Main decode "d3:cow3:moo4:spam4:eggse"`
-Output:
-`{"cow":"moo","spam":"eggs"}`
+  1. Decode bencoded string
+    `java model.Main decode "d3:cow3:moo4:spam4:eggse"`
+  Output:
+    `{"cow":"moo","spam":"eggs"}`
 
 2. Display torrent file info
-`java model.Main info path/to/file.torrent`
-Output includes:
-
-File name
-
-File length
-
-Tracker URL
-
-Info hash
-
-Piece length
-
-Hashed pieces (SHA-1)
-
-Parsed info dictionary (JSON)
+  `java model.Main info path/to/file.torrent`
+  Output includes:
+    - File name
+    - File length
+    - Tracker URL
+    - Info hash
+    - Piece length
+    - Hashed pieces (SHA-1)
+    - Parsed info dictionary (JSON)
 
 3. List tracker peers
-`java model.Main peers path/to/file.torrent`
+  `java model.Main peers path/to/file.torrent`
 Output:
-
-Tracker interval
-
-List of peer IPs and ports
+  - Tracker interval
+  - List of peer IPs and ports
 
 4. Perform BitTorrent handshake
-`java model.Main handshake path/to/file.torrent <peer_ip:port>`
+  `java model.Main handshake path/to/file.torrent <peer_ip:port>`
 Output:
-
-Handshake peer ID in hex format
+  - Handshake peer ID in hex format
 
 5. Download a single piece
-`java model.Main download_piece -o output_file path/to/file.torrent <piece_index>`
+  `java model.Main download_piece -o output_file path/to/file.torrent <piece_index>`
 Output:
-
-Saves the piece data to output_file
-
-Confirms success or failure
+  - Saves the piece data to output_file
+  - Confirms success or failure
 
 6. Download the full file
-`java model.Main download -o output_file path/to/file.torrent`
+  `java model.Main download -o output_file path/to/file.torrent`
 Output:
+  - Downloads all pieces concurrently using available peers
+  - Writes complete file to output_file
 
-Downloads all pieces concurrently using available peers
-
-Writes complete file to output_file
-
-📁 Project Structure
-less
-Copy
-Edit
-src/
-├── model/
-│   ├── Main.java                  // Entry point
-│   ├── session/                  // Peer and tracker sessions
-│   ├── decoder/                  // Bencode decoder
-│   └── ...                       // Supporting classes
 📝 Notes
-Uses RandomAlphaPeerIdGenerator for unique peer IDs.
+  - Uses RandomAlphaPeerIdGenerator for unique peer IDs.
 
-Tracker requests use hardcoded port 6881 for simplicity.
+  - Tracker requests use hardcoded port 6881 for simplicity.
 
-Currently assumes single-file torrents.
+  - Currently assumes single-file torrents.
 
 🧪 Example .torrent File
-To test file downloads, you'll need a valid .torrent file referencing an available public tracker and seeders. Use sample.torrent.
+  To test file downloads, you'll need a valid .torrent file referencing an available public tracker and seeders. Use sample.torrent.
 
 🧼 Known Limitations
-No GUI — CLI only.
+  - No GUI — CLI only.
 
-No support for magnet links.
+  - No support for magnet links.
 
-No DHT or peer exchange.
+  - No DHT or peer exchange.
