@@ -1,14 +1,17 @@
-import org.junit.jupiter.api.BeforeEach;
+import model.session.TorrentFileHandler;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.*;
-
-
+/**
+ * This file contains unit tests for the model.session.TorrentFileHandler class.
+ */
 public class TorrentFileHandlerTests
 {
 	private TorrentFileHandler torrentFileHandler;
 
+	/**
+	 * Tests for bad file paths, invalid file types, and empty or null file names.
+	 */
 	@Test
 	public void testIllegalFileInitialization()
 	{
@@ -41,6 +44,9 @@ public class TorrentFileHandlerTests
 		assertEquals("File name cannot be null", exception.getMessage());
 	}
 
+	/**
+	 * Tests for valid file initialization, ensuring that all fields are correctly populated.
+	 */
 	@Test
 	public void testValidFileInitialization()
 	{
@@ -52,7 +58,7 @@ public class TorrentFileHandlerTests
 		assertNotNull(torrentFileHandler.getFileContentMap());
 		assertNotNull(torrentFileHandler.getInfoMap());
 		assertNotNull(torrentFileHandler.getTrackerUrl());
-		assertNotNull(torrentFileHandler.getFileHash());
+		assertNotNull(torrentFileHandler.getInfoHash());
 		assertNotNull(torrentFileHandler.getHashedPieces());
 		assertTrue(torrentFileHandler.getHashedPieces().size() > 0);
 		assertTrue(torrentFileHandler.getPieceLength() > 0);

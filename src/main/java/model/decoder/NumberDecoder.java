@@ -1,3 +1,11 @@
+package model.decoder;
+
+/**
+ * model.decoder.Decoder for bencoded integers. This class implements the {@link Decoder} interface to decode
+ * integers from bencoded strings and byte arrays.
+ *
+ * @author KX
+ */
 public class NumberDecoder implements Decoder<Integer> {
 
   /**
@@ -6,17 +14,20 @@ public class NumberDecoder implements Decoder<Integer> {
    *
    * @param input      The bencoded string to decode.
    * @param startIndex The index to start decoding from.
-   * @return A DecoderDTO containing the decoded number and the next index to read from.
+   * @return A model.decoder.DecoderDTO containing the decoded number and the next index to read from.
    */
   @Override
   public DecoderDTO<Integer> decode(String input, int startIndex) throws IllegalArgumentException {
     validateInput(input, startIndex, 'i');
 
+    // Find the end of the number by looking for 'e'
     int endIndex = input.indexOf('e', startIndex);
     if (endIndex == -1) {
       throw new IllegalArgumentException(
           "Invalid bencoded number: missing 'e' at index " + startIndex);
     }
+
+    // Parse the number between 'i' and 'e'
     String numberStr = input.substring(startIndex + 1, endIndex);
     int value;
     try {
@@ -35,6 +46,7 @@ public class NumberDecoder implements Decoder<Integer> {
 
     int endIndex = startIndex + 1;
 
+    // Find the end of the number by looking for 'e'
     while (endIndex < bencodedBytes.length && bencodedBytes[endIndex] != 'e') {
       if (bencodedBytes[endIndex] < '0' || bencodedBytes[endIndex] > '9') {
         throw new IllegalArgumentException(
@@ -48,6 +60,7 @@ public class NumberDecoder implements Decoder<Integer> {
           "Invalid bencoded number: missing 'e' at index " + startIndex);
     }
 
+    // Parse the number between 'i' and 'e' by converting the byte array to a string within the specified range
     String numberStr = new String(bencodedBytes, startIndex + 1, endIndex - startIndex - 1);
     int value;
     try {

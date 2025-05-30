@@ -1,9 +1,31 @@
+import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Map;
+import model.session.MalformedTrackerResponseException;
+import model.session.TrackerClient;
+import model.session.TrackerCommunicationException;
+import model.session.TrackerResponse;
 import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests for the model.session.TrackerClient class. Tests include initialization, encoding of info hash, and
+ * tracker requests.
+ *
+ * @author KX
+ */
 public class TrackerClientTests {
 
+  /**
+   * Tests the initialization of the model.session.TrackerClient with valid parameters. It checks that the client
+   * is created successfully and that all fields are set correctly.
+   */
   @Test
   public void testTrackerClientInitialization() {
     String trackerUrl = "http://example.com:8080/announce";
@@ -28,6 +50,10 @@ public class TrackerClientTests {
     assertEquals(1, trackerClient.getCompactMode());
   }
 
+  /**
+   * Tests the initialization of the model.session.TrackerClient with invalid parameters. It checks that
+   * appropriate exceptions are thrown for null or empty values.
+   */
   @Test
   public void testTrackerClientBadInitialization() {
     // null values
@@ -37,7 +63,7 @@ public class TrackerClientTests {
     int fileSize = 1024;
     byte[] infoHash = new byte[20];
 
-    //TrackerClient trackerClient = new TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
+    //model.session.TrackerClient trackerClient = new model.session.TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
     Exception ex = assertThrows(IllegalArgumentException.class,
         () -> new TrackerClient(null, port, fileSize, infoHash, peerId));
 
@@ -73,6 +99,9 @@ public class TrackerClientTests {
 
   }
 
+  /**
+   * Tests the URL encoding method. Makes sure that the method responds correctly to bad input
+   */
   @Test
   public void testBadURLEncodedHash() {
     // null hash
@@ -86,6 +115,10 @@ public class TrackerClientTests {
     assertEquals("Hash cannot be null or empty", ex.getMessage());
   }
 
+  /**
+   * Tests the URL encoding of a hash with no unreserved characters. It checks that the output is
+   * correctly encoded and has the expected length.
+   */
   @Test
   public void testURLEncodedHashNoUnreserved() {
     String output = "%00%01%02%03%04%05%06%07%08%09";
@@ -100,6 +133,10 @@ public class TrackerClientTests {
     assertEquals(length, encodedHash.length());
   }
 
+  /**
+   * Tests the URL encoding of a hash with unreserved characters. It checks that the output is
+   * correctly encoded and has the expected length.
+   */
   @Test
   public void testURLEncodedHashWithUnreserved() {
     String hex = "d69f91e6b2ae4c542468d1073a71d4ea13879a7f";
@@ -114,9 +151,252 @@ public class TrackerClientTests {
     assertEquals(shortenedOutput.length(), encodedHash.length());
   }
 
+  /**
+   * Tests that the model.session.TrackerClient throws the correct exception when trying to connect
+   * to an invalid tracker URL or an unreachable tracker.
+   */
   @Test
-  public void testRequestTracker() {
+  public void testRequestTrackerInvalidRequest() {
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+    HttpClient fastFailClient = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1)
+        .connectTimeout(Duration.ofSeconds(3))
+        .build();
 
+    TrackerClient invalidClient = new TrackerClient(
+        "http://example.com:8080/announce",
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890", fastFailClient
+    );
+    Exception ex = assertThrows(TrackerCommunicationException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Failed to contact tracker"));
+
+    String tracker404Url = tfh.getTrackerUrl() + "/404";
+    invalidClient = new TrackerClient(
+        tracker404Url,
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890", fastFailClient
+    );
+    ex = assertThrows(TrackerCommunicationException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Tracker returned non-200 response: "));
+
+  }
+
+  /**
+   * Tests that the model.session.TrackerClient throws the correct exception when trying to connect
+   * to an invalid tracker URL or an unreachable tracker using a mock HttpClient.
+   */
+  @Test
+  public void testRequestTrackerInvalidRequestMockClient()
+      throws IOException, InterruptedException {
+    HttpClient mockHttpClient = mock(HttpClient.class);
+    HttpResponse<byte[]> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(404);
+
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+
+    TrackerClient invalidClient = new TrackerClient(
+        tfh.getTrackerUrl(),
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890", mockHttpClient
+    );
+
+    Exception ex = assertThrows(TrackerCommunicationException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Tracker returned non-200 response: "));
+  }
+
+  /**
+   * Tests that the model.session.TrackerClient throws the correct exception when the tracker response is invalid.
+   * It checks for missing 'peers' or 'interval' in the response.
+   *
+   * @throws MalformedTrackerResponseException if the tracker response is malformed
+   * @throws TrackerCommunicationException      if there is an issue with tracker communication
+   */
+  @Test
+  public void testRequestTrackerInvalidResponse()
+      throws MalformedTrackerResponseException, TrackerCommunicationException {
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+    //model.session.TorrentFileHandler tfh = new model.session.TorrentFileHandler("sample.torrent");
+
+    TrackerClient invalidClient = new TrackerClient(
+        tfh.getTrackerUrl(),
+        60000000, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890");
+    Exception ex = assertThrows(MalformedTrackerResponseException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Missing 'peers' or 'interval' in tracker response"));
+
+    byte[] wrongHash = new byte[20];
+    for (int i = 0; i < wrongHash.length; i++) {
+      wrongHash[i] = (byte) i;
+    }
+    invalidClient = new TrackerClient(
+        tfh.getTrackerUrl(),
+        6881, tfh.getFileLength(),
+        wrongHash, "12345678901234567890");
+    ex = assertThrows(MalformedTrackerResponseException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Missing 'peers' or 'interval' in tracker response"));
+
+  }
+
+  /**
+   * Tests that the model.session.TrackerClient throws the correct exception when the tracker response is invalid
+   * using a mock HttpClient.
+   * @throws IOException if there is an issue with the mock HttpClient
+   * @throws InterruptedException if the thread is interrupted while waiting for the response
+   */
+  @Test
+  public void testRequestTrackerInvalidResponseMockClient()
+      throws IOException, InterruptedException {
+    HttpClient mockHttpClient = mock(HttpClient.class);
+    HttpResponse<byte[]> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(200);
+
+    byte[] fakeTrackerResponse = "d6:failure reason:Invalid request".getBytes();
+    when(mockResponse.body()).thenReturn(fakeTrackerResponse);
+
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+
+    TrackerClient invalidClient = new TrackerClient(
+        tfh.getTrackerUrl(),
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890", mockHttpClient
+    );
+
+    Exception ex = assertThrows(IllegalArgumentException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Failed to decode tracker response"));
+
+    byte[] missingIntervalResponse = "d5:peers0:e".getBytes();
+    when(mockResponse.body()).thenReturn(missingIntervalResponse);
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+    ex = assertThrows(MalformedTrackerResponseException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Missing 'peers' or 'interval' in tracker response"));
+
+    byte[] missingPeersResponse = "d8:intervali60ee".getBytes();
+    when(mockResponse.body()).thenReturn(missingPeersResponse);
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+    ex = assertThrows(MalformedTrackerResponseException.class,
+        invalidClient::requestTracker);
+    assertTrue(ex.getMessage().contains("Missing 'peers' or 'interval' in tracker response"));
+
+  }
+
+  /**
+   * Tests a valid request to the tracker. It checks that the response contains the expected peers
+   * and interval.
+   *
+   * @throws MalformedTrackerResponseException if the tracker response is malformed
+   * @throws TrackerCommunicationException      if there is an issue with tracker communication
+   */
+  @Test
+  public void testRequestTrackerValidRequest()
+      throws MalformedTrackerResponseException, TrackerCommunicationException {
+    Map<String, Integer> expectedPeers = Map.of(
+        "165.232.38.164", 51433,
+        "165.232.41.73", 51430,
+        "165.232.35.114", 51531
+    );
+
+    int expectedInterval = 60;
+
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+    //model.session.TorrentFileHandler tfh = new model.session.TorrentFileHandler("sample.torrent");
+
+    TrackerClient trc = new TrackerClient(
+        tfh.getTrackerUrl(),
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890");
+
+    TrackerResponse response = trc.requestTracker();
+    assertNotNull(response);
+    assertEquals(expectedInterval, response.getInterval());
+    assertNotNull(response.getPeers());
+    assertEquals(expectedPeers.size(), response.getPeersMap().size());
+    for (Map.Entry<String, Integer> entry : expectedPeers.entrySet()) {
+      assertTrue(response.getPeersMap().containsKey(entry.getKey()));
+      assertEquals(entry.getValue(), response.getPeersMap().get(entry.getKey()));
+    }
+
+    assertNotNull(response.getPeersMap());
+    assertNotNull(response.getPeers());
+    assertTrue(response.getPeers().length > 0);
+    assertTrue(response.getPeersMap().size() > 0);
+  }
+
+  /**
+   * Tests a valid request to the tracker using a mock HttpClient. It checks that the response
+   * contains the expected peers and interval.
+   *
+   * @throws IOException if there is an issue with the mock HttpClient
+   * @throws InterruptedException if the thread is interrupted while waiting for the response
+   * @throws MalformedTrackerResponseException if the tracker response is malformed
+   * @throws TrackerCommunicationException if there is an issue with tracker communication
+   */
+  @Test
+  public void testRequestTrackerValidRequestMockClient()
+      throws IOException, InterruptedException, MalformedTrackerResponseException, TrackerCommunicationException {
+    Map<String, Integer> expectedPeers = Map.of(
+        "165.232.38.164", 51433
+    );
+
+    HttpClient mockHttpClient = mock(HttpClient.class);
+    HttpResponse<byte[]> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(200);
+
+    byte[] fakeTrackerResponse = "d8:intervali60e5:peers6:".getBytes();
+    byte[] peerAddress = new byte[]{
+        -91, -24, 38, -92, -56, -23
+    };
+    byte[] ending = "e".getBytes();
+
+    byte[] fakeTrackerResponseFull = new byte[fakeTrackerResponse.length + peerAddress.length
+        + ending.length];
+    System.arraycopy(fakeTrackerResponse, 0, fakeTrackerResponseFull, 0,
+        fakeTrackerResponse.length);
+    System.arraycopy(peerAddress, 0, fakeTrackerResponseFull, fakeTrackerResponse.length,
+        peerAddress.length);
+    System.arraycopy(ending, 0, fakeTrackerResponseFull,
+        fakeTrackerResponse.length + peerAddress.length, ending.length);
+
+    when(mockResponse.statusCode()).thenReturn(200);
+    when(mockResponse.body()).thenReturn(fakeTrackerResponseFull);
+
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    MockTorrentFileHandler tfh = new MockTorrentFileHandler();
+
+    TrackerClient trc = new TrackerClient(
+        tfh.getTrackerUrl(),
+        6881, tfh.getFileLength(),
+        tfh.getInfoHash(), "12345678901234567890", mockHttpClient
+    );
+
+    TrackerResponse response = trc.requestTracker();
+    assertNotNull(response);
+    assertEquals(60, response.getInterval());
+    assertNotNull(response.getPeers());
+    assertTrue(response.getPeers().length > 0);
+
+    assertEquals(expectedPeers.size(), response.getPeersMap().size());
+    for (Map.Entry<String, Integer> entry : expectedPeers.entrySet()) {
+      assertTrue(response.getPeersMap().containsKey(entry.getKey()));
+      assertEquals(entry.getValue(), response.getPeersMap().get(entry.getKey()));
+    }
   }
 
 

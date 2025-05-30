@@ -1033,7 +1033,7 @@ Program is longer.
 
 Three Responsibilities
 
-- Main program is contained in the PrimePrinter class all by itself. Its responsibility is to handle the execution environment. It will change if the method of invocation changes.
+- model.Main program is contained in the PrimePrinter class all by itself. Its responsibility is to handle the execution environment. It will change if the method of invocation changes.
 - `RowColumnPagePrinter` knows all about to format a list of numbers into pages with a certain number of rows and columns. If formatting is changed, then this is the class that would be affected.
 - `PrimeGenerator` class knows how to generate a list of prime numbers. It is not be meant to be instantiated. It is just a useful scope in which its variables can be declared and kept hidden.
 
