@@ -1,3 +1,5 @@
+package model.session;
+
 /**
  * Exception class for handling errors during piece download operations including, hash mismatches,
  * invalid blocks, and other download-related issues Used in
@@ -8,7 +10,7 @@
 public class PieceDownloadException extends Exception {
 
   /**
-   * Constructs a new PieceDownloadException with the specified detail message.
+   * Constructs a new model.session.PieceDownloadException with the specified detail message.
    *
    * @param message the detail message, which is saved for later retrieval by the
    *                {@link #getMessage()} method
@@ -18,7 +20,7 @@ public class PieceDownloadException extends Exception {
   }
 
   /**
-   * Constructs a new PieceDownloadException with the specified detail message and cause.
+   * Constructs a new model.session.PieceDownloadException with the specified detail message and cause.
    *
    * @param message the detail message, which is saved for later retrieval by the
    *                {@link #getMessage()} method

@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import model.session.PeerSession;
+import model.session.TrackerClient;
 
 /**
  * Mock implementation of an InputStream that allows for reading predefined byte arrays. This is

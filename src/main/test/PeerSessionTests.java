@@ -12,12 +12,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import model.session.PieceDownloadException;
+import model.session.PeerSession;
+import model.session.TorrentFileHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for the PeerSession class, which handles communication with a peer in a torrent network.
+ * Tests for the model.session.PeerSession class, which handles communication with a peer in a torrent network.
  */
 public class PeerSessionTests {
   private PeerSession peerSession;
@@ -42,11 +45,11 @@ public class PeerSessionTests {
   }
 
   /**
-   * Tests the PeerSession constructor for various invalid initializations.
+   * Tests the model.session.PeerSession constructor for various invalid initializations.
    */
   @Test
   public void testInvalidInitialization() {
-    // Initialize the PeerRequester with dummy values
+    // Initialize the model.PeerRequester with dummy values
     MockTorrentFileHandler tfh = new MockTorrentFileHandler();
     Exception ex = assertThrows(IllegalArgumentException.class,
         () -> new PeerSession(null, 6881, "01234567890123456789", tfh.getInfoHash()));
@@ -91,7 +94,7 @@ public class PeerSessionTests {
   }
 
   /**
-   * Tests the PeerSession constructor with valid parameters.
+   * Tests the model.session.PeerSession constructor with valid parameters.
    */
   @Test
   public void testValidInitialization() {
@@ -107,7 +110,7 @@ public class PeerSessionTests {
   }
 
   /**
-   * Tests the peerHandshake method of the PeerSession class.
+   * Tests the peerHandshake method of the model.session.PeerSession class.
    */
   @Test
   public void testPeerHandshake() throws IOException {
@@ -174,11 +177,11 @@ public class PeerSessionTests {
 
 
   /**
-   * Tests the establishInterested method of the PeerSession class.
+   * Tests the establishInterested method of the model.session.PeerSession class.
    */
   @Test
   public void testEstablishInterested() throws IOException {
-    // Initialize the PeerRequester with dummy values
+    // Initialize the model.PeerRequester with dummy values
 
     List<byte[]> responses = new ArrayList<>();
     responses.add(createHandshakeResponse(torrentFileHandler.getInfoHash()));

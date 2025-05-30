@@ -1,8 +1,9 @@
+import model.session.TorrentFileHandler;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * This file contains unit tests for the TorrentFileHandler class.
+ * This file contains unit tests for the model.session.TorrentFileHandler class.
  */
 public class TorrentFileHandlerTests
 {

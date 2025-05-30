@@ -1,4 +1,5 @@
 import java.util.List;
+import model.session.TorrentFileHandler;
 
 /**
  * Mock implementation of the {@link TorrentFileHandler} for testing purposes.

@@ -1,3 +1,5 @@
+package model.session;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -8,6 +10,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import model.decoder.DecoderByteDTO;
+import model.decoder.DecoderDispatcher;
+import model.decoder.DictionaryDecoder;
+import model.decoder.NumberPair;
 
 /**
  * A client for interacting with a BitTorrent tracker. This class handles sending requests to the
@@ -52,7 +58,7 @@ public class TrackerClient {
   private final HttpClient client;
 
   /**
-   * Constructs a TrackerClient with default parameters. Uses a HTTP client with a 20-second
+   * Constructs a model.session.TrackerClient with default parameters. Uses a HTTP client with a 20-second
    * timeout.
    *
    * @param trackerUrl         the URL of the tracker
@@ -69,7 +75,7 @@ public class TrackerClient {
   }
 
   /**
-   * Constructs a TrackerClient with specified parameters. Uses the provided HttpClient instance.
+   * Constructs a model.session.TrackerClient with specified parameters. Uses the provided HttpClient instance.
    *
    * @param trackerUrl         the URL of the tracker
    * @param port               the port to connect to
@@ -160,7 +166,7 @@ public class TrackerClient {
    * {@link DecoderDispatcher}
    *
    * @param responseBody the raw byte array of the tracker response
-   * @return a TrackerResponse containing the interval and peer list in binary format
+   * @return a model.session.TrackerResponse containing the interval and peer list in binary format
    * @throws IllegalArgumentException          if the response cannot be decoded
    * @throws MalformedTrackerResponseException if the response is missing required fields
    */

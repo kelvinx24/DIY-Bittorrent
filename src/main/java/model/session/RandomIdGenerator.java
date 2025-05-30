@@ -1,3 +1,5 @@
+package model.session;
+
 /**
  * A simple interface for generating random IDs.
  *

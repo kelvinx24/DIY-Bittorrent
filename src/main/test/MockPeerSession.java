@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
+import model.session.PeerSession;
 
 /**
  * Mock implementation of the {@link PeerSession} class for testing purposes.

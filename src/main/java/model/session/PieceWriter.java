@@ -1,3 +1,5 @@
+package model.session;
+
 import java.io.IOException;
 
 /**

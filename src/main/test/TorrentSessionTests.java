@@ -27,13 +27,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import model.session.PieceDownloadException;
+import model.session.PeerSession;
+import model.session.PeerSessionFactory;
+import model.session.TorrentFileHandler;
+import model.session.TorrentSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 /**
- * Unit tests for the TorrentSession class.
- * This class tests the initialization, piece downloading, and session management of TorrentSession.
+ * Unit tests for the model.session.TorrentSession class.
+ * This class tests the initialization, piece downloading, and session management of model.session.TorrentSession.
  * It uses mock objects to simulate the behavior of external dependencies.
  *
  * @author KX
@@ -79,7 +84,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the initialization of TorrentSession with valid parameters.
+   * Tests the initialization of model.session.TorrentSession with valid parameters.
    * It checks if the session is created successfully and if all fields are initialized correctly.
    */
   @Test
@@ -111,7 +116,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the TorrentSession constructor with invalid parameters.
+   * Tests the model.session.TorrentSession constructor with invalid parameters.
    * It checks if the constructor throws IllegalArgumentException when any parameter is null.
    */
   @Test
@@ -190,7 +195,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Checks if the TorrentSession can find remote peers successfully.
+   * Checks if the model.session.TorrentSession can find remote peers successfully.
    */
   @Test
   public void testValidFindRemotePeers() {
@@ -236,7 +241,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests if the TorrentSession can download a piece successfully.
+   * Tests if the model.session.TorrentSession can download a piece successfully.
    */
   @Test
   public void testDownloadPiece() throws PieceDownloadException, IOException {
@@ -356,7 +361,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the downloadAll method of TorrentSession.
+   * Tests the downloadAll method of model.session.TorrentSession.
    * It checks if all pieces are downloaded successfully and written to the output file.
    * This test uses a synchronous execution model to ensure all pieces are downloaded in order.
    */
@@ -392,7 +397,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the downloadAll method of TorrentSession with concurrent execution.
+   * Tests the downloadAll method of model.session.TorrentSession with concurrent execution.
    * It checks if multiple peer sessions can download pieces concurrently and if the output file is written correctly.
    * This test uses a CountDownLatch to synchronize the start of piece downloads across multiple threads.
    */
@@ -479,7 +484,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the downloadAll method of TorrentSession with peers in different states.
+   * Tests the downloadAll method of model.session.TorrentSession with peers in different states.
    * It checks if only the connected peer is used for downloading pieces.
    * This test simulates a scenario where one peer is idle and another is downloading.
    *
@@ -521,7 +526,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the downloadAll method of TorrentSession when no peers are available.
+   * Tests the downloadAll method of model.session.TorrentSession when no peers are available.
    * It checks if the method throws an IllegalStateException when no peers can be found.
    */
   @Test
@@ -550,7 +555,7 @@ public class TorrentSessionTests {
   }
 
   /**
-   * Tests the downloadAll method of TorrentSession with retry handling.
+   * Tests the downloadAll method of model.session.TorrentSession with retry handling.
    * It checks if the method can handle retries for piece downloads and successfully downloads all pieces.
    * This test simulates a scenario where a piece download fails initially but succeeds on retry.
    *

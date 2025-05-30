@@ -1,3 +1,5 @@
+package model;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,9 +14,14 @@ import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import model.decoder.DecoderByteDTO;
+import model.decoder.DecoderDispatcher;
+import model.decoder.DictionaryDecoder;
+import model.decoder.NumberPair;
+import model.session.TorrentFileHandler;
+import model.session.TrackerResponse;
 
 public class PeerRequester {
 	public static final Set<Byte> UNRESERVED = new HashSet<>();

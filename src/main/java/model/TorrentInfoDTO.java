@@ -1,5 +1,8 @@
+package model;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
+import model.decoder.NumberPair;
 
 public class TorrentInfoDTO {
 	private final Map<String, NumberPair> byteRangeMap;

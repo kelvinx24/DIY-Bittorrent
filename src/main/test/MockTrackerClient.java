@@ -1,4 +1,8 @@
 import java.net.http.HttpClient;
+import model.session.MalformedTrackerResponseException;
+import model.session.TrackerClient;
+import model.session.TrackerCommunicationException;
+import model.session.TrackerResponse;
 
 /**
  * A mock implementation of {@link TrackerClient} for testing purposes.
@@ -54,7 +58,7 @@ public class MockTrackerClient extends TrackerClient {
   /**
    * Constructs a MockTrackerClient that can throw an exception when requesting the tracker.
    *
-   * @param throwException if true, the requestTracker method will throw a TrackerCommunicationException
+   * @param throwException if true, the requestTracker method will throw a model.session.TrackerCommunicationException
    */
   public MockTrackerClient(boolean throwException) {
     this();
@@ -62,10 +66,10 @@ public class MockTrackerClient extends TrackerClient {
   }
 
   /**
-   * Requests the tracker and returns a simulated TrackerResponse.
-   * If throwException is true, this method will throw a TrackerCommunicationException.
+   * Requests the tracker and returns a simulated model.session.TrackerResponse.
+   * If throwException is true, this method will throw a model.session.TrackerCommunicationException.
    *
-   * @return a TrackerResponse containing a fake tracker response
+   * @return a model.session.TrackerResponse containing a fake tracker response
    * @throws TrackerCommunicationException if throwException is true
    * @throws IllegalArgumentException if any parameter is invalid
    * @throws MalformedTrackerResponseException if the response is malformed

@@ -1,4 +1,8 @@
 import java.util.Map;
+import model.session.MalformedTrackerResponseException;
+import model.session.TrackerClient;
+import model.session.TrackerCommunicationException;
+import model.session.TrackerResponse;
 
 /**
  * A mock implementation of {@link TrackerClient} that allows defining peers for testing purposes.
@@ -30,7 +34,7 @@ public class DefinableTrackerClient extends TrackerClient {
 
   /**
    * Mock implementation of the requestTracker method.
-   * @return a TrackerResponse containing the defined peers
+   * @return a model.session.TrackerResponse containing the defined peers
    */
   @Override
   public TrackerResponse requestTracker() throws TrackerCommunicationException,

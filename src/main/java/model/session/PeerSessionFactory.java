@@ -1,6 +1,8 @@
+package model.session;
+
 /**
- * PeerSessionFactory is an interface for creating {@link PeerSession} instances.
- * It provides a method to create a PeerSession with the necessary parameters.
+ * model.session.PeerSessionFactory is an interface for creating {@link PeerSession} instances.
+ * It provides a method to create a model.session.PeerSession with the necessary parameters.
  *
  * @author KX
  */
@@ -12,7 +14,7 @@ public interface PeerSessionFactory {
    * @param port the port number of the peer
    * @param peerId the unique identifier of the peer
    * @param infoHash the info hash of the torrent file
-   * @return a new PeerSession instance
+   * @return a new model.session.PeerSession instance
    */
   PeerSession create(String ip, int port, String peerId, byte[] infoHash);
 }

@@ -1,8 +1,10 @@
+package model.decoder;
+
 import java.util.List;
 import java.util.Map;
 
 /**
- * DecoderDispatcher is responsible for dispatching the decoding of bencoded data to the appropriate
+ * model.decoder.DecoderDispatcher is responsible for dispatching the decoding of bencoded data to the appropriate
  * decoder based on the prefix character of the input string or byte array. It supports decoding
  * integers, strings, lists, and dictionaries.
  *

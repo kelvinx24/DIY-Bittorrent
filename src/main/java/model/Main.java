@@ -1,3 +1,5 @@
+package model;
+
 import com.google.gson.Gson;
 
 import java.io.IOException;
@@ -5,6 +7,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import model.decoder.DecoderDTO;
+import model.decoder.DecoderDispatcher;
+import model.session.DefaultPeerSessionFactory;
+import model.session.DefaultPieceWriter;
+import model.session.DefaultTrackerClientFactory;
+import model.session.RandomAlphaPeerIdGenerator;
+import model.session.TorrentFileHandler;
+import model.session.TorrentSession;
+import model.session.TrackerResponse;
 // import com.dampcake.bencode.Bencode; - available if you need it!
 
 public class Main {

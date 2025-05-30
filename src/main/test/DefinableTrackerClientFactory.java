@@ -1,4 +1,6 @@
 import java.util.Map;
+import model.session.TrackerClient;
+import model.session.TrackerClientFactory;
 
 /**
  * A factory for creating instances of {@link DefinableTrackerClient}.

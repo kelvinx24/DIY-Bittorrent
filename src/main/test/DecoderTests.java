@@ -1,3 +1,12 @@
+import model.decoder.Decoder;
+import model.decoder.DecoderByteDTO;
+import model.decoder.DecoderDTO;
+import model.decoder.DecoderDispatcher;
+import model.decoder.DictionaryDecoder;
+import model.decoder.ListDecoder;
+import model.decoder.NumberDecoder;
+import model.decoder.NumberPair;
+import model.decoder.TextDecoder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -6,7 +15,7 @@ import java.util.*;
 
 /**
  * Tests for the bencode decoders. This class tests the functionality of various decoders including
- * NumberDecoder, TextDecoder, ListDecoder, and DictionaryDecoder.
+ * model.decoder.NumberDecoder, model.decoder.TextDecoder, model.decoder.ListDecoder, and model.decoder.DictionaryDecoder.
  *
  * @author KX
  */

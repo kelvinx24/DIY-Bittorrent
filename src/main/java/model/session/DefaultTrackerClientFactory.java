@@ -1,3 +1,5 @@
+package model.session;
+
 /**
  * Default implementation fo the {@link TrackerClientFactory} interface.
  * This factory creates instances of {@link TrackerClient} with the provided parameters.

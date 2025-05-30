@@ -1,9 +1,10 @@
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import model.session.PieceWriter;
 
 /**
- * Mock implementation of the PieceWriter interface for testing purposes.
+ * Mock implementation of the model.session.PieceWriter interface for testing purposes.
  * This class simulates writing pieces of data to a file by storing them in memory.
  * It allows verification of written offsets and pieces without actual file I/O.
  *

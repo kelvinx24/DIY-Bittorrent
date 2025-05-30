@@ -1,3 +1,5 @@
+package model.session;
+
 /**
  * Randomly generates a random peer ID consisting of 20 lowercase alphabetic characters.
  * This class implements the {@link RandomIdGenerator} interface.

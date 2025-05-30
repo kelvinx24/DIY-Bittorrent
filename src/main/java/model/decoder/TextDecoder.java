@@ -1,5 +1,7 @@
+package model.decoder;
+
 /**
- * Decoder for bencoded strings. This class implements the {@link Decoder} interface
+ * model.decoder.Decoder for bencoded strings. This class implements the {@link Decoder} interface
  *
  * @author KX
  */
@@ -12,7 +14,7 @@ public class TextDecoder implements Decoder<String> {
    *
    * @param input      the bencoded string to decode
    * @param startIndex the index to start decoding from
-   * @return a DecoderDTO containing the decoded string and the next index to continue decoding from
+   * @return a model.decoder.DecoderDTO containing the decoded string and the next index to continue decoding from
    * @throws IllegalArgumentException if the input is invalid or the start index is out of bounds
    */
   @Override

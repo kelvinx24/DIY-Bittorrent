@@ -1,3 +1,5 @@
+package model.session;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -54,7 +56,7 @@ public class TorrentSession {
    */
   private final ConcurrentMap<Integer, PieceState> pieceStates;
   /**
-   * Maps piece indices to the PeerSession that is currently downloading that piece. This allows
+   * Maps piece indices to the model.session.PeerSession that is currently downloading that piece. This allows
    * tracking which peer is responsible for downloading each piece.
    */
   private final ConcurrentMap<Integer, PeerSession> pieceDownloaders;
@@ -75,7 +77,7 @@ public class TorrentSession {
   private List<Future<?>> downloadFutures = new ArrayList<>();
 
   /**
-   * Constructs a TorrentSession with the specified parameters. Uses torrent files to initialize the
+   * Constructs a model.session.TorrentSession with the specified parameters. Uses torrent files to initialize the
    * session and prepare for downloading pieces from remote peers.
    *
    * @param tfh                  {@link TorrentFileHandler} instance to handle downloads from
@@ -83,8 +85,8 @@ public class TorrentSession {
    * @param outputFilePath       Path where the downloaded file will be saved.
    * @param trackerClientFactory Factory to create {@link TrackerClient} instance.
    * @param peerSessionFactory   Factory to create {@link PeerSession} instances.
-   * @param pieceWriter          PieceWriter instance to handle writing pieces to the file.
-   * @param idGenerator          RandomIdGenerator to generate a unique peer ID.
+   * @param pieceWriter          model.session.PieceWriter instance to handle writing pieces to the file.
+   * @param idGenerator          model.session.RandomIdGenerator to generate a unique peer ID.
    * @param executor             ExecutorService for managing concurrent downloads (optional).
    *                             Useful for testing purposes, can be set to null to use default
    *                             thread pool.
@@ -128,7 +130,7 @@ public class TorrentSession {
   }
 
   /**
-   * Constructs a TorrentSession with the specified parameters. The executor is set to null, which
+   * Constructs a model.session.TorrentSession with the specified parameters. The executor is set to null, which
    * means the session will use as many threads as there are peer sessions available.
    *
    * @param tfh                  {@link TorrentFileHandler} instance to handle downloads from
@@ -136,8 +138,8 @@ public class TorrentSession {
    * @param outputFilePath       Path where the downloaded file will be saved.
    * @param trackerClientFactory Factory to create {@link TrackerClient} instance.
    * @param peerSessionFactory   Factory to create {@link PeerSession} instances.
-   * @param pieceWriter          PieceWriter instance to handle writing pieces to the file.
-   * @param idGenerator          RandomIdGenerator to generate a unique peer ID.
+   * @param pieceWriter          model.session.PieceWriter instance to handle writing pieces to the file.
+   * @param idGenerator          model.session.RandomIdGenerator to generate a unique peer ID.
    */
   public TorrentSession(
       TorrentFileHandler tfh,
@@ -151,11 +153,11 @@ public class TorrentSession {
   }
 
   /**
-   * Finds remote peers from the tracker and creates PeerSession instances for each peer. This
+   * Finds remote peers from the tracker and creates model.session.PeerSession instances for each peer. This
    * method requests the tracker for a list of peers and initializes {@link PeerSession} objects for
    * each peer found.
    *
-   * @return List of PeerSession objects representing remote peers.
+   * @return List of model.session.PeerSession objects representing remote peers.
    */
   public List<PeerSession> findRemotePeers() {
     List<PeerSession> unconnectedPeers = new ArrayList<>();
@@ -181,7 +183,7 @@ public class TorrentSession {
    * method attempts to download the specified piece from any available peer session that is
    * currently idle. If the piece is successfully downloaded and its hash matches the expected hash,
    * it returns the piece data. If the piece cannot be downloaded or the hash does not match, it
-   * throws an IOException or PieceDownloadException.
+   * throws an IOException or model.session.PieceDownloadException.
    * <p>
    * Does not close the peer sessions after downloading the piece, allowing for reuse of peer
    * sessions for subsequent downloads.
@@ -348,7 +350,7 @@ public class TorrentSession {
    * specified peer session. It will keep trying to download pieces until either the piece queue is
    * empty or the peer session is no longer in the downloading state.
    *
-   * @param peerSession the PeerSession from which to download pieces
+   * @param peerSession the model.session.PeerSession from which to download pieces
    */
   private void downloadPiecesForPeer(PeerSession peerSession) {
     while (!pieceQueue.isEmpty()) {
@@ -386,9 +388,9 @@ public class TorrentSession {
    * piece, updates the state to DOWNLOADING, and attempts to download the piece data. If the piece
    * is successfully downloaded and its hash matches the expected hash, it writes the piece data to
    * the output file. If the piece data is invalid or the download fails, it throws an IOException
-   * or PieceDownloadException.
+   * or model.session.PieceDownloadException.
    *
-   * @param peerSession the PeerSession from which to download the piece
+   * @param peerSession the model.session.PeerSession from which to download the piece
    * @param pieceIndex  the index of the piece to download
    * @throws IOException            if an I/O error occurs during the download process or if the
    *                                piece data is invalid

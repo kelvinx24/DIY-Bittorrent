@@ -1,8 +1,15 @@
+package model.session;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import model.decoder.Decoder;
+import model.decoder.DecoderByteDTO;
+import model.decoder.DecoderDispatcher;
+import model.decoder.DictionaryDecoder;
+import model.decoder.NumberPair;
 
 /**
  * Handles the parsing and management of .torrent files. This class reads a torrent file, extracts
@@ -26,7 +33,7 @@ public class TorrentFileHandler {
   private final List<byte[]> hashedPieces = new ArrayList<>();
 
   /**
-   * Constructs a TorrentFileHandler for the specified torrent file.
+   * Constructs a model.session.TorrentFileHandler for the specified torrent file.
    *
    * @param fileName the name of the torrent file to parse
    * @throws NullPointerException     if fileName is null

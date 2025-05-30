@@ -1,5 +1,7 @@
+package model.decoder;
+
 /**
- * Decoder for bencoded integers. This class implements the {@link Decoder} interface to decode
+ * model.decoder.Decoder for bencoded integers. This class implements the {@link Decoder} interface to decode
  * integers from bencoded strings and byte arrays.
  *
  * @author KX
@@ -12,7 +14,7 @@ public class NumberDecoder implements Decoder<Integer> {
    *
    * @param input      The bencoded string to decode.
    * @param startIndex The index to start decoding from.
-   * @return A DecoderDTO containing the decoded number and the next index to read from.
+   * @return A model.decoder.DecoderDTO containing the decoded number and the next index to read from.
    */
   @Override
   public DecoderDTO<Integer> decode(String input, int startIndex) throws IllegalArgumentException {

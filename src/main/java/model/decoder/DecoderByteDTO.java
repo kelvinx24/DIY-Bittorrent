@@ -1,8 +1,10 @@
+package model.decoder;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * DecoderByteDTO is a data transfer object that encapsulates the details of a byte decoder. It
+ * model.decoder.DecoderByteDTO is a data transfer object that encapsulates the details of a byte decoder. It
  * contains a {@link DecoderDTO}, a map of byte ranges, and a value range.
  *
  * @param <T> the type of value that the decoder handles
@@ -20,7 +22,7 @@ public class DecoderByteDTO<T> {
   private final NumberPair valueRange;
 
   /**
-   * Constructor for DecoderByteDTO.
+   * Constructor for model.decoder.DecoderByteDTO.
    *
    * @param decoderDTO the {@link DecoderDTO} containing the decoded value and next index
    * @param byteRanges a map of byte ranges associated with the decoded value
@@ -34,9 +36,9 @@ public class DecoderByteDTO<T> {
   }
 
   /**
-   * Constructor for DecoderByteDTO with an empty byte range map.
+   * Constructor for model.decoder.DecoderByteDTO with an empty byte range map.
    *
-   * @param decoderDTO the DecoderDTO containing the decoded value and next index
+   * @param decoderDTO the model.decoder.DecoderDTO containing the decoded value and next index
    * @param valueRange the range of indices that represent the value within the byte array
    */
   public DecoderByteDTO(DecoderDTO<T> decoderDTO, NumberPair valueRange) {
@@ -44,10 +46,10 @@ public class DecoderByteDTO<T> {
   }
 
   /**
-   * Copy constructor for DecoderByteDTO. This creates a new instance with the same values as the
+   * Copy constructor for model.decoder.DecoderByteDTO. This creates a new instance with the same values as the
    * provided decoderByteDTO.
    *
-   * @param decoderByteDTO the DecoderByteDTO to copy
+   * @param decoderByteDTO the model.decoder.DecoderByteDTO to copy
    */
   public DecoderByteDTO(DecoderByteDTO<T> decoderByteDTO) {
     this(decoderByteDTO.getDecoderDTO(), new LinkedHashMap<>(decoderByteDTO.getByteRanges()),
@@ -55,7 +57,7 @@ public class DecoderByteDTO<T> {
   }
 
   /**
-   * Constructor for DecoderByteDTO with a value and its associated indices. This is useful when you
+   * Constructor for model.decoder.DecoderByteDTO with a value and its associated indices. This is useful when you
    * have a value and want to specify values within {@link DecoderDTO} and value range.
    *
    * @param value           the decoded value

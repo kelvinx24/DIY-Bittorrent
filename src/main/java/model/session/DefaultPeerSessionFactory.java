@@ -1,3 +1,5 @@
+package model.session;
+
 /**
  * Default implementation of the {@link PeerSessionFactory} interface.
  * This factory creates instances of {@link PeerSession} with the provided parameters.

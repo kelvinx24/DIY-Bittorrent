@@ -1,5 +1,7 @@
+package model.session;
+
 /**
- * TrackerClientFactory produces instances of {@link TrackerClient}
+ * model.session.TrackerClientFactory produces instances of {@link TrackerClient}
  * which are used to communicate with a BitTorrent tracker.
  *
  * @author KX

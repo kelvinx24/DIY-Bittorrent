@@ -1,3 +1,5 @@
+package model.decoder;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +14,7 @@ public class ListDecoder implements Decoder<List<Object>> {
   private final DecoderDispatcher dispatcher;
 
   /**
-   * Constructor for ListDecoder that initializes the dispatcher.
+   * Constructor for model.decoder.ListDecoder that initializes the dispatcher.
    *
    * @param dispatcher The {@link DecoderDispatcher} used to decode elements within the list.
    */
@@ -28,7 +30,7 @@ public class ListDecoder implements Decoder<List<Object>> {
    *
    * @param input      The bencoded string to decode.
    * @param startIndex The index to start decoding from.
-   * @return A DecoderDTO containing the decoded list and the next index to read from.
+   * @return A model.decoder.DecoderDTO containing the decoded list and the next index to read from.
    */
   public DecoderDTO<List<Object>> decode(String input,
       int startIndex) throws IllegalArgumentException {

@@ -1,3 +1,5 @@
+package model.session;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * PeerSession class represents a session with a peer in a BitTorrent network. It handles the
+ * model.session.PeerSession class represents a session with a peer in a BitTorrent network. It handles the
  * handshake, interested state, and downloading pieces of a torrent.
  *
  * @author KX
@@ -63,7 +65,7 @@ public class PeerSession {
   }
 
   /**
-   * Constructs a PeerSession with the specified parameters. Uses a default Socket.
+   * Constructs a model.session.PeerSession with the specified parameters. Uses a default Socket.
    * Values originate from torrent file and tracker response.
    *
    * @param ipAddress The IP address of the peer.
@@ -76,7 +78,7 @@ public class PeerSession {
   }
 
   /**
-   * Constructs a PeerSession with the specified parameters and a custom Socket.
+   * Constructs a model.session.PeerSession with the specified parameters and a custom Socket.
    *
    * @param ipAddress  The IP address of the peer.
    * @param port       The port number of the peer.

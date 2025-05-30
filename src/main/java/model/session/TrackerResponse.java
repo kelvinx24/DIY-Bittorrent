@@ -1,8 +1,10 @@
+package model.session;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * TrackerResponse is a data transfer object that encapsulates the response from a tracker server.
+ * model.session.TrackerResponse is a data transfer object that encapsulates the response from a tracker server.
  * It contains the interval for the next request, a byte array of peers, and a map of peers with
  * their corresponding ports.
  */
@@ -13,7 +15,7 @@ public class TrackerResponse {
   private final Map<String, Integer> peersMap;
 
   /**
-   * Constructor for TrackerResponse with an interval and a byte array of peers. This constructor
+   * Constructor for model.session.TrackerResponse with an interval and a byte array of peers. This constructor
    * initializes the interval and peers, and then parses the peers to create a map of IP addresses
    * and their corresponding ports.
    *

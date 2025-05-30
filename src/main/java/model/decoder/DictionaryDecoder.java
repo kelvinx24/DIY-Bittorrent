@@ -1,9 +1,11 @@
+package model.decoder;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * DictionaryDecoder is responsible for decoding bencoded dictionaries from a string or byte array.
- * It relies on a DecoderDispatcher to handle the decoding of keys and values within the dictionary.
+ * model.decoder.DictionaryDecoder is responsible for decoding bencoded dictionaries from a string or byte array.
+ * It relies on a model.decoder.DecoderDispatcher to handle the decoding of keys and values within the dictionary.
  * This class implements the {@link DecoderDTO} interface
  *
  * @author KX
@@ -13,7 +15,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
   private final DecoderDispatcher dispatcher;
 
   /**
-   * Constructor for DictionaryDecoder. This initializes the decoder with a
+   * Constructor for model.decoder.DictionaryDecoder. This initializes the decoder with a
    * {@link DecoderDispatcher}
    *
    * @param dispatcher the {@link DictionaryDecoder} used to decode keys and values within the
@@ -32,7 +34,7 @@ public class DictionaryDecoder implements Decoder<Map<String, Object>> {
    *
    * @param input      the bencoded string to decode.
    * @param startIndex the index to start decoding from.
-   * @return A DecoderDTO containing the decoded dictionary and the next index to read from.
+   * @return A model.decoder.DecoderDTO containing the decoded dictionary and the next index to read from.
    * @throws IllegalArgumentException if the input is invalid or if the dictionary format is
    *                                  incorrect.
    */

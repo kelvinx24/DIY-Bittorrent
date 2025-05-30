@@ -1,5 +1,7 @@
+package model.decoder;
+
 /**
- * Decoder interface for decoding bencoded strings and byte arrays.
+ * model.decoder.Decoder interface for decoding bencoded strings and byte arrays.
  * @param <T> the type of object that will be returned after decoding
  * @author KX
  */
@@ -9,7 +11,7 @@ public interface Decoder<T> {
 	 *
 	 * @param bencodedString the bencoded string to decode
 	 * @param startIndex     the index to start decoding from
-	 * @return a DecoderDTO containing the decoded object and the next index
+	 * @return a model.decoder.DecoderDTO containing the decoded object and the next index
 	 * @throws IllegalArgumentException if the input is invalid
 	 */
 	DecoderDTO<T> decode(String bencodedString, int startIndex) throws IllegalArgumentException;
@@ -18,7 +20,7 @@ public interface Decoder<T> {
 	 * Decodes a bencoded byte array starting from the specified index.
 	 * @param bencodedBytes the bencoded byte array to decode
 	 * @param startIndex the index to start decoding from
-	 * @return a DecoderByteDTO containing the decoded object and the next index
+	 * @return a model.decoder.DecoderByteDTO containing the decoded object and the next index
 	 * also includes byte ranges for the decoded object
 	 * @throws IllegalArgumentException if the input is invalid
 	 */

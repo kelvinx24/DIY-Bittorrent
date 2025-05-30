@@ -4,6 +4,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import model.session.MalformedTrackerResponseException;
+import model.session.TrackerClient;
+import model.session.TrackerCommunicationException;
+import model.session.TrackerResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.*;
@@ -11,7 +15,7 @@ import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for the TrackerClient class. Tests include initialization, encoding of info hash, and
+ * Tests for the model.session.TrackerClient class. Tests include initialization, encoding of info hash, and
  * tracker requests.
  *
  * @author KX
@@ -19,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TrackerClientTests {
 
   /**
-   * Tests the initialization of the TrackerClient with valid parameters. It checks that the client
+   * Tests the initialization of the model.session.TrackerClient with valid parameters. It checks that the client
    * is created successfully and that all fields are set correctly.
    */
   @Test
@@ -47,7 +51,7 @@ public class TrackerClientTests {
   }
 
   /**
-   * Tests the initialization of the TrackerClient with invalid parameters. It checks that
+   * Tests the initialization of the model.session.TrackerClient with invalid parameters. It checks that
    * appropriate exceptions are thrown for null or empty values.
    */
   @Test
@@ -59,7 +63,7 @@ public class TrackerClientTests {
     int fileSize = 1024;
     byte[] infoHash = new byte[20];
 
-    //TrackerClient trackerClient = new TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
+    //model.session.TrackerClient trackerClient = new model.session.TrackerClient(trackerUrl, port, fileSize, infoHash, peerId);
     Exception ex = assertThrows(IllegalArgumentException.class,
         () -> new TrackerClient(null, port, fileSize, infoHash, peerId));
 
@@ -148,7 +152,7 @@ public class TrackerClientTests {
   }
 
   /**
-   * Tests that the TrackerClient throws the correct exception when trying to connect
+   * Tests that the model.session.TrackerClient throws the correct exception when trying to connect
    * to an invalid tracker URL or an unreachable tracker.
    */
   @Test
@@ -181,7 +185,7 @@ public class TrackerClientTests {
   }
 
   /**
-   * Tests that the TrackerClient throws the correct exception when trying to connect
+   * Tests that the model.session.TrackerClient throws the correct exception when trying to connect
    * to an invalid tracker URL or an unreachable tracker using a mock HttpClient.
    */
   @Test
@@ -208,7 +212,7 @@ public class TrackerClientTests {
   }
 
   /**
-   * Tests that the TrackerClient throws the correct exception when the tracker response is invalid.
+   * Tests that the model.session.TrackerClient throws the correct exception when the tracker response is invalid.
    * It checks for missing 'peers' or 'interval' in the response.
    *
    * @throws MalformedTrackerResponseException if the tracker response is malformed
@@ -218,7 +222,7 @@ public class TrackerClientTests {
   public void testRequestTrackerInvalidResponse()
       throws MalformedTrackerResponseException, TrackerCommunicationException {
     MockTorrentFileHandler tfh = new MockTorrentFileHandler();
-    //TorrentFileHandler tfh = new TorrentFileHandler("sample.torrent");
+    //model.session.TorrentFileHandler tfh = new model.session.TorrentFileHandler("sample.torrent");
 
     TrackerClient invalidClient = new TrackerClient(
         tfh.getTrackerUrl(),
@@ -243,7 +247,7 @@ public class TrackerClientTests {
   }
 
   /**
-   * Tests that the TrackerClient throws the correct exception when the tracker response is invalid
+   * Tests that the model.session.TrackerClient throws the correct exception when the tracker response is invalid
    * using a mock HttpClient.
    * @throws IOException if there is an issue with the mock HttpClient
    * @throws InterruptedException if the thread is interrupted while waiting for the response
@@ -310,7 +314,7 @@ public class TrackerClientTests {
     int expectedInterval = 60;
 
     MockTorrentFileHandler tfh = new MockTorrentFileHandler();
-    //TorrentFileHandler tfh = new TorrentFileHandler("sample.torrent");
+    //model.session.TorrentFileHandler tfh = new model.session.TorrentFileHandler("sample.torrent");
 
     TrackerClient trc = new TrackerClient(
         tfh.getTrackerUrl(),

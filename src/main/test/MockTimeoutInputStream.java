@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.util.List;
+import model.session.PeerSession;
+import model.session.TrackerClient;
 
 /**
  * Mock implementation of an InputStream that simulates a timeout during read operations. This is

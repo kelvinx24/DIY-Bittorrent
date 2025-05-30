@@ -1,8 +1,11 @@
+import model.session.TrackerClient;
+import model.session.TrackerClientFactory;
+
 /**
  * A mock implementation of {@link TrackerClientFactory} for testing purposes.
  * This factory creates instances of {@link MockTrackerClient}.
  */
-public class MockTrackerClientFactory implements TrackerClientFactory{
+public class MockTrackerClientFactory implements TrackerClientFactory {
 
   private final boolean throwError;
 
@@ -14,9 +17,9 @@ public class MockTrackerClientFactory implements TrackerClientFactory{
   }
 
   /**
-   * Constructs a MockTrackerClientFactory that can throw an error when creating a TrackerClient.
+   * Constructs a MockTrackerClientFactory that can throw an error when creating a model.session.TrackerClient.
    *
-   * @param throwError if true, the factory will create a TrackerClient that simulates an error
+   * @param throwError if true, the factory will create a model.session.TrackerClient that simulates an error
    */
   public MockTrackerClientFactory(boolean throwError) {
     this.throwError = throwError;

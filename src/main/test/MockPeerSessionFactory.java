@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.List;
+import model.session.PeerSession;
+import model.session.PeerSessionFactory;
 
 /**
  * A mock implementation of the {@link PeerSessionFactory} interface for testing purposes.

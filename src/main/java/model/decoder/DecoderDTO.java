@@ -1,3 +1,5 @@
+package model.decoder;
+
 /**
  * Data Transfer Object for storing the result of a decoding operation.
  * @param <T> the type of the decoded value, which can be Integer, String, List, Map
@@ -9,7 +11,7 @@ public class DecoderDTO<T> {
 	private final int nextIndex;     // Index after the decoded value
 
 	/**
-	 * Constructor for DecoderDTO.
+	 * Constructor for model.decoder.DecoderDTO.
 	 *
 	 * @param value      the decoded value, which can be Integer, String, List, Map
 	 * @param nextIndex  the index to continue decoding from after this value
