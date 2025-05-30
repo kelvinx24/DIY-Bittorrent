@@ -209,7 +209,7 @@ public class TorrentSession {
     // Search for an idle peer session to download the piece
     while (true) {
       for (PeerSession peer : peerSessions) {
-        if (peer.getSessionState() == PeerSession.SessionState.IDLE) {
+        if (peer.getSessionState() != PeerSession.SessionState.DOWNLOADING) {
           byte[] pieceData = peer.downloadPiece(pieceIndex, pieceLength,
               pieceHashes.get(pieceIndex), fileSize);
 
