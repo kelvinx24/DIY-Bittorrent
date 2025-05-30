@@ -2,6 +2,7 @@ This is a project build based on the information given in
 ["Build Your Own BitTorrent" Challenge](https://app.codecrafters.io/courses/bittorrent/overview).
 
 BitTorrent Java Client
+
 This is a simple Java-based BitTorrent client that supports decoding bencoded strings, reading .torrent metadata, connecting to peers, performing handshakes, and downloading pieces or full files.
 
 📦 Features
